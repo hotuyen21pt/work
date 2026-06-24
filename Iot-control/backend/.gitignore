@@ -1,0 +1,9 @@
+# File cấu hình chứa thông tin kết nối DB (mật khẩu) — không đẩy lên git
+config.yaml
+
+# Binary build
+lot-control.exe
+lot-control
+
+# Database SQLite cũ (nếu còn)
+data/

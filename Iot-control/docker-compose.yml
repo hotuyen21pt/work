@@ -1,0 +1,39 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: lot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: lot123456
+      MYSQL_DATABASE: lot_control
+    ports:
+      # Host 3307 -> tránh đụng MySQL local (3306). Navicat kết nối localhost:3307.
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-plot123456"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: ./backend
+    container_name: lot-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db          # tên service MySQL trong mạng docker
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: lot123456
+      DB_NAME: lot_control
+      SERVER_PORT: 8080
+      JWT_SECRET: lot-control-secret-2024
+    ports:
+      - "8080:8080"        # frontend (npm run dev) proxy /api -> localhost:8080
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:

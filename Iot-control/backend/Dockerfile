@@ -1,0 +1,20 @@
+# --- Build stage ---
+FROM golang:1.22-alpine AS build
+WORKDIR /app
+
+# Tải dependencies trước để tận dụng cache.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Build binary (pure Go, không cần CGO).
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /lot-control .
+
+# --- Runtime stage ---
+FROM alpine:3.20
+WORKDIR /app
+RUN adduser -D -u 10001 app
+COPY --from=build /lot-control /app/lot-control
+USER app
+EXPOSE 8080
+ENTRYPOINT ["/app/lot-control"]

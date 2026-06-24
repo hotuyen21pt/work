@@ -1,0 +1,36 @@
+# ── Binaries / tooling ───────────────────
+cloudflared.exe        # cloudflared tunnel binary (~54MB) — tải lại khi cần
+cloudflared
+*.exe
+
+# ── Backend ──────────────────────────────
+backend/data/          # SQLite database (dữ liệu thực)
+backend/*.exe
+backend/lot-control
+backend/lot-control.exe
+backend/config.yaml    # cấu hình chứa mật khẩu DB / JWT secret
+
+# ── Logs ─────────────────────────────────
+*.log
+logs/
+
+# ── Frontend ─────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# ── Environment / secrets ────────────────
+.env
+.env.*
+!.env.example
+
+# ── OS ───────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ──────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo

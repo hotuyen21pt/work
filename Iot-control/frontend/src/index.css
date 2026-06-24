@@ -1,0 +1,1166 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Tông chủ đạo: xanh lá ngọc (emerald) — thanh lịch, không chói. */
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-light: #ecfdf5;
+  --primary-soft: #d1fae5;
+  /* Gradient thương hiệu — dùng cho brand, nút chính, accent. */
+  --grad-primary: linear-gradient(135deg, #047857 0%, #10b981 100%);
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --gray-50: #f7faf9;
+  --gray-100: #eef3f1;
+  --gray-200: #e2eae7;
+  --gray-300: #d2ddd8;
+  --gray-400: #9aa8a2;
+  --gray-500: #64746d;
+  --gray-700: #324840;
+  --gray-900: #0f211b;
+  --white: #ffffff;
+  --radius: 10px;
+  --radius-lg: 16px;
+  /* Đường cong chuyển động: mượt, giảm tốc tự nhiên ở cuối. */
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Bóng đổ mềm, hơi ngả xanh lá để hợp tông thương hiệu. */
+  --shadow-sm: 0 1px 2px 0 rgb(6 78 59 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(6 78 59 / 0.08), 0 1px 2px -1px rgb(6 78 59 / 0.05);
+  --shadow-md: 0 6px 16px -4px rgb(6 78 59 / 0.1), 0 2px 6px -2px rgb(6 78 59 / 0.06);
+  --shadow-lg: 0 18px 40px -12px rgb(6 78 59 / 0.18), 0 6px 14px -6px rgb(6 78 59 / 0.1);
+  --ring: 0 0 0 3px rgb(16 185 129 / 0.18);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  /* Nền dịu, gradient rất nhẹ tạo chiều sâu thay vì màu phẳng. */
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2f8 100%);
+  background-attachment: fixed;
+  color: var(--gray-900);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ─── Layout ─────────────────────────────── */
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.75rem 1.5rem;
+  width: 100%;
+}
+
+/* ─── Header ─────────────────────────────── */
+.header {
+  background: rgb(255 255 255 / 0.85);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--gray-200);
+  padding: 0 1.5rem;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: var(--shadow-sm);
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  /* Chữ thương hiệu chuyển sắc gradient. */
+  background: var(--grad-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.header-brand span {
+  font-size: 1.35rem;
+  -webkit-text-fill-color: initial;
+}
+
+.header-center {
+  flex: 1;
+  text-align: center;
+  min-width: 0;
+}
+
+.header-center h1 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-subtitle {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--gray-100);
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.user-badge .branch-tag {
+  background: var(--primary-soft);
+  color: var(--primary-hover);
+  border-radius: 6px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ─── Buttons ─────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.05rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.15s, box-shadow 0.15s, opacity 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:active:not(:disabled) { transform: translateY(1px); }
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--grad-primary);
+  color: var(--white);
+  box-shadow: 0 4px 12px -2px rgb(16 185 129 / 0.4);
+}
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 6px 18px -2px rgb(16 185 129 / 0.5);
+  filter: brightness(1.05);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--white);
+  box-shadow: 0 4px 12px -2px rgb(239 68 68 / 0.35);
+}
+.btn-danger:hover:not(:disabled) { background: var(--danger-hover); }
+
+.btn-ghost {
+  background: var(--white);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.btn-sm {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+  border-radius: 8px;
+}
+
+.btn-full { width: 100%; }
+
+/* ─── Forms ─────────────────────────────── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.05rem;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-700);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  outline: none;
+  background: var(--white);
+  width: 100%;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  color: var(--gray-900);
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+
+.form-group input:disabled,
+.form-group textarea:disabled {
+  background: var(--gray-100);
+  color: var(--gray-500);
+  cursor: not-allowed;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.4rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--gray-200);
+}
+
+/* ─── Alert ─────────────────────────────── */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.alert-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.alert-success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+/* ─── Login ─────────────────────────────── */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Lớp 1: điểm sáng dịu phía trên trái. Lớp 2: gradient emerald sâu, có chiều. */
+  background:
+    radial-gradient(120% 120% at 15% 10%, rgba(110, 231, 183, 0.55) 0%, transparent 45%),
+    linear-gradient(150deg, #022c22 0%, #065f46 42%, #059669 75%, #10b981 100%);
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hai vầng sáng mờ tạo chiều sâu cho nền đăng nhập. */
+.login-page::before,
+.login-page::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+}
+.login-page::before {
+  width: 420px; height: 420px;
+  background: #34d399;
+  opacity: 0.45;
+  top: -140px; right: -120px;
+}
+.login-page::after {
+  width: 460px; height: 460px;
+  background: #047857;
+  opacity: 0.55;
+  bottom: -180px; left: -140px;
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  background: rgb(255 255 255 / 0.98);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgb(255 255 255 / 0.6);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 30px 60px -15px rgb(2 44 34 / 0.5), 0 10px 24px -8px rgb(2 44 34 / 0.35);
+  padding: 2.75rem 2rem;
+  width: 100%;
+  max-width: 420px;
+  animation: slideUp 0.3s ease;
+}
+
+.login-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.login-logo .icon {
+  font-size: 2.4rem;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Khối logo nổi với gradient emerald + viền sáng + bóng đổ màu. */
+  background: var(--grad-primary);
+  border-radius: 22px;
+  margin-bottom: 0.95rem;
+  box-shadow: 0 10px 22px -6px rgb(16 185 129 / 0.55);
+}
+
+.login-logo h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: var(--grad-primary);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.login-logo p {
+  font-size: 0.875rem;
+  color: var(--gray-500);
+  margin-top: 0.3rem;
+}
+
+/* ─── Toolbar ─────────────────────────────── */
+.toolbar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+  align-items: center;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  outline: none;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, box-shadow 0.15s;
+  color: var(--gray-900);
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+  box-shadow: var(--ring);
+}
+
+/* ─── SKU Grid ─────────────────────────────── */
+.sku-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.1rem;
+}
+
+.sku-card {
+  position: relative;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.3rem;
+  cursor: pointer;
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+  transition: box-shadow 0.22s ease, transform 0.22s ease, border-color 0.22s ease;
+}
+
+/* Dải gradient mảnh phía trên, hiện rõ khi hover. */
+.sku-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--grad-primary);
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.sku-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  border-color: var(--primary-soft);
+}
+.sku-card:hover::before { opacity: 1; }
+
+.sku-code {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+  font-family: 'Menlo', 'Consolas', monospace;
+  letter-spacing: 0.02em;
+}
+
+.sku-name {
+  font-size: 0.875rem;
+  color: var(--gray-700);
+  margin-bottom: 1.1rem;
+  min-height: 1.25rem;
+}
+
+.sku-stats {
+  display: flex;
+  gap: 1.5rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--gray-100);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.sku-card-actions {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.sku-card:hover .sku-card-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── SKU Summary ─────────────────────────────── */
+.sku-summary {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.summary-card {
+  position: relative;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.35rem 1.5rem;
+  flex: 1;
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+}
+
+.summary-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--grad-primary);
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.45rem;
+  font-weight: 600;
+}
+
+.summary-value {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--primary);
+  line-height: 1;
+}
+
+.summary-value .unit {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--gray-500);
+  margin-left: 0.3rem;
+}
+
+/* ─── Section header ─────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.1rem;
+  gap: 1rem;
+}
+
+.section-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--gray-900);
+}
+
+/* ─── Table ─────────────────────────────── */
+.table-wrapper {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+  border: 1px solid var(--gray-200);
+}
+
+.lot-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.lot-table th {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-500);
+  background: var(--gray-50);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.lot-table td {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid var(--gray-100);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.lot-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.lot-table tbody tr {
+  transition: background 0.12s;
+}
+
+.lot-table tbody tr:hover td {
+  background: var(--primary-light);
+}
+
+.lot-table tfoot td {
+  padding: 0.8rem 1rem;
+  border-top: 2px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.lot-number-cell {
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-weight: 700;
+  color: var(--gray-900);
+  letter-spacing: 0.02em;
+}
+
+.qty-cell {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.4rem;
+}
+
+/* ─── Modal ─────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgb(15 23 42 / 0.5);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+  animation: fadeIn 0.22s var(--ease);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 1.6rem;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--gray-200);
+  transform-origin: center bottom;
+  animation: modalIn 0.32s var(--ease);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes modalIn {
+  from { transform: translateY(16px) scale(0.97); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.modal-header {
+  margin-bottom: 1.3rem;
+}
+
+.modal-header h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--gray-900);
+}
+
+.modal-subtitle {
+  font-size: 0.8rem;
+  color: var(--gray-500);
+  margin-top: 0.25rem;
+}
+
+/* ─── Input + nút cùng hàng (vd: ô Mã SKU + nút quét) ─── */
+.input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.input-row input {
+  flex: 1;
+}
+
+.input-row .btn {
+  padding-inline: 0.85rem;
+  font-size: 1.05rem;
+}
+
+/* ─── Barcode Scanner ──────────────────────── */
+/* Scanner luôn nổi trên popup tạo SKU (z-index modal = 50) để camera
+   không bị form tạo SKU che khi bấm 📷 từ trong form. */
+.scanner-overlay {
+  z-index: 60;
+}
+
+.scanner-modal {
+  max-width: 420px;
+}
+
+.scanner-viewport {
+  width: 100%;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 1rem;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+
+.scanner-viewport video {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+/* ─── Nav tabs (for pages) ─────────────────────────────── */
+.nav-tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-tab {
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gray-500);
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-tab:hover { background: var(--gray-100); }
+.nav-tab.active { background: var(--primary-light); color: var(--primary); }
+
+/* ─── Misc ─────────────────────────────── */
+.loading-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--gray-500);
+  font-size: 0.9rem;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 4rem;
+  color: var(--gray-500);
+}
+
+/* Vòng quay tải dữ liệu (CSS thuần, không cần đổi markup). */
+.loading::before,
+.loading-screen::before {
+  content: '';
+  width: 34px;
+  height: 34px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--gray-400);
+}
+
+.empty-state .empty-icon {
+  font-size: 2.75rem;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+}
+
+.empty-state p {
+  font-size: 0.9rem;
+}
+
+.text-muted { color: var(--gray-400); }
+
+/* ─── Users page ─────────────────────────────── */
+.user-list {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--gray-200);
+  overflow: hidden;
+}
+
+.user-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--gray-100);
+  transition: background 0.12s;
+}
+
+.user-item:hover { background: var(--gray-50); }
+.user-item:last-child { border-bottom: none; }
+
+.user-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.user-name { font-weight: 700; font-size: 0.92rem; }
+.user-meta { font-size: 0.8rem; color: var(--gray-500); }
+
+.role-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.role-badge.admin { background: #fef3c7; color: #92400e; }
+.role-badge.staff { background: var(--primary-soft); color: var(--primary-hover); }
+
+/* ─── Touch devices ─────────────────────────────
+   Trên thiết bị không có con trỏ (điện thoại/tablet) không có trạng
+   thái :hover, nên các action ẩn-hiện-khi-hover phải luôn hiển thị,
+   nếu không người dùng điện thoại không bao giờ thấy nút Xóa. */
+@media (hover: none) {
+  .sku-card-actions { opacity: 1; transform: none; }
+  .sku-card:hover { transform: none; }
+  .sku-card:hover::before { opacity: 1; }
+}
+
+/* ─── Responsive ─────────────────────────────── */
+@media (max-width: 768px) {
+  .header { padding: 0 0.875rem; gap: 0.5rem; height: 56px; }
+  .main { padding: 1rem; }
+  .sku-grid { grid-template-columns: 1fr; }
+  .sku-summary { flex-direction: column; }
+  .form-row { grid-template-columns: 1fr; }
+  .user-badge .branch-tag { display: none; }
+
+  /* Toolbar: ô tìm kiếm chiếm trọn 1 hàng, các nút xuống hàng dưới. */
+  .toolbar { flex-wrap: wrap; gap: 0.5rem; }
+  .search-input { flex: 1 1 100%; }
+  .toolbar .btn { flex: 1; }
+
+  /* Vùng chạm tối thiểu ~44px cho mọi nút — dễ bấm bằng ngón tay. */
+  .btn { min-height: 44px; padding: 0.7rem 1rem; }
+  .btn-sm { min-height: 38px; }
+
+  /* Nút Xóa trên thẻ SKU luôn hiển thị (không phụ thuộc hover). */
+  .sku-card-actions { opacity: 1; transform: none; }
+  .sku-card:active { transform: scale(0.99); }
+  .sku-card:hover { transform: none; }
+
+  /* Modal dạng bottom-sheet: trượt lên từ đáy, full chiều rộng,
+     dễ thao tác một tay và không bị bàn phím ảo che khuất. */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 1.35rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom));
+    animation: sheetUp 0.24s ease;
+  }
+  .scanner-overlay { align-items: center; padding: 1rem; }
+  .scanner-modal {
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+    animation: slideUp 0.2s ease;
+  }
+  .form-actions .btn { flex: 1; }
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .header-brand { font-size: 0.95rem; }
+  .summary-value { font-size: 1.6rem; }
+  .header-right { gap: 0.4rem; }
+  .user-badge { padding: 0.25rem 0.55rem; font-size: 0.75rem; }
+  .login-card { padding: 2rem 1.4rem; }
+}
+
+/* ─── Theme toggle (Sáng/Tối) ─────────────────────────────── */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font-size: 1.05rem;
+  line-height: 1;
+  transition: background 0.15s, transform 0.12s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.theme-toggle:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+.theme-toggle:active { transform: scale(0.92); }
+
+.login-theme-toggle {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+}
+/* Trên nền gradient của trang đăng nhập, nút trong suốt nhẹ cho dễ nhìn. */
+.login-theme-toggle .theme-toggle {
+  background: rgb(255 255 255 / 0.18);
+  border-color: rgb(255 255 255 / 0.35);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.login-theme-toggle .theme-toggle:hover {
+  background: rgb(255 255 255 / 0.3);
+}
+
+/* ─── Chip chọn nhanh đơn vị tính ─────────────────────────── */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.chip {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--gray-700);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.chip:hover { border-color: var(--primary); color: var(--primary); }
+.chip:active { transform: scale(0.95); }
+.chip-active {
+  background: var(--primary-soft);
+  border-color: transparent;
+  color: var(--primary-hover);
+}
+
+/* ─── Modal header có icon (vd: Thêm SKU) ─────────────────── */
+.modal-header-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.modal-icon {
+  font-size: 1.5rem;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light);
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px var(--primary-soft);
+}
+
+/* Nút quét trong hàng nhập mã SKU: giữ cỡ chữ vừa, không bị to như emoji đơn. */
+.input-row .btn-scan {
+  font-size: 0.875rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE — kích hoạt qua [data-theme="dark"] trên <html>.
+   Chủ yếu định nghĩa lại các biến màu; component dùng var() nên
+   tự đổi theo mà không phải sửa từng selector.
+   ═══════════════════════════════════════════════════════════ */
+[data-theme='dark'] {
+  --primary: #10b981;
+  --primary-hover: #34d399;
+  --primary-light: #0f2a22;
+  --primary-soft: #134e3a;
+  --grad-primary: linear-gradient(135deg, #059669 0%, #34d399 100%);
+
+  --gray-50: #0b1714;
+  --gray-100: #15241f;
+  --gray-200: #25382f;
+  --gray-300: #3a5046;
+  --gray-400: #7e948b;
+  --gray-500: #9bb0a7;
+  --gray-700: #cbe0d7;
+  --gray-900: #effaf5;
+  --white: #14241e;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 18px 40px -12px rgb(0 0 0 / 0.65), 0 6px 14px -6px rgb(0 0 0 / 0.5);
+  --ring: 0 0 0 3px rgb(16 185 129 / 0.3);
+}
+
+/* Các nền dùng màu cố định (không qua biến) cần override riêng cho dark. */
+[data-theme='dark'] body {
+  background: linear-gradient(180deg, #07120f 0%, #0b1714 100%);
+}
+[data-theme='dark'] .header {
+  background: rgb(15 30 25 / 0.82);
+}
+[data-theme='dark'] .login-card {
+  background: rgb(20 36 30 / 0.97);
+}
+[data-theme='dark'] .alert-error {
+  background: #3a1d1d;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+[data-theme='dark'] .alert-success {
+  background: #0f2e1d;
+  color: #86efac;
+  border-color: #166534;
+}
+[data-theme='dark'] .role-badge.admin {
+  background: #3a2e0a;
+  color: #fcd34d;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHUYỂN ĐỘNG — hiệu ứng xuất hiện & tương tác mượt mà.
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Thẻ SKU hiện dần và lệch nhẹ theo thứ tự (stagger) cho sinh động. */
+.sku-card {
+  animation: fadeUp 0.5s var(--ease) both;
+}
+.sku-grid .sku-card:nth-child(1) { animation-delay: 0.03s; }
+.sku-grid .sku-card:nth-child(2) { animation-delay: 0.07s; }
+.sku-grid .sku-card:nth-child(3) { animation-delay: 0.11s; }
+.sku-grid .sku-card:nth-child(4) { animation-delay: 0.15s; }
+.sku-grid .sku-card:nth-child(5) { animation-delay: 0.19s; }
+.sku-grid .sku-card:nth-child(6) { animation-delay: 0.23s; }
+.sku-grid .sku-card:nth-child(7) { animation-delay: 0.27s; }
+.sku-grid .sku-card:nth-child(8) { animation-delay: 0.31s; }
+
+/* Card tổng quan & danh sách trượt lên nhẹ khi vào trang. */
+.summary-card { animation: fadeUp 0.45s var(--ease) both; }
+.sku-summary .summary-card:nth-child(2) { animation-delay: 0.06s; }
+.sku-summary .summary-card:nth-child(3) { animation-delay: 0.12s; }
+
+.table-wrapper,
+.user-list,
+.empty-state { animation: fadeUp 0.45s var(--ease) both; }
+
+/* Hàng trong bảng lô hiện dần theo thứ tự. */
+.lot-table tbody tr { animation: fadeUp 0.4s var(--ease) both; }
+.lot-table tbody tr:nth-child(2) { animation-delay: 0.04s; }
+.lot-table tbody tr:nth-child(3) { animation-delay: 0.08s; }
+.lot-table tbody tr:nth-child(4) { animation-delay: 0.12s; }
+.lot-table tbody tr:nth-child(5) { animation-delay: 0.16s; }
+.lot-table tbody tr:nth-child(n+6) { animation-delay: 0.2s; }
+
+/* Hàng tài khoản hiện dần. */
+.user-item { animation: fadeUp 0.4s var(--ease) both; }
+
+/* Nút bấm: phản hồi chạm nảy nhẹ, mượt hơn. */
+.btn { transition: transform 0.18s var(--ease-spring), background 0.15s, box-shadow 0.2s var(--ease), opacity 0.15s, border-color 0.15s, filter 0.15s; }
+.btn-primary:hover:not(:disabled) { transform: translateY(-1px); }
+
+/* Nút đổi sáng/tối: xoay nhẹ icon khi rê chuột. */
+.theme-toggle { transition: background 0.18s var(--ease), transform 0.25s var(--ease-spring), border-color 0.15s; }
+.theme-toggle:hover { transform: rotate(18deg); }
+.theme-toggle:active { transform: scale(0.9) rotate(18deg); }
+
+/* Chip đơn vị: chọn có cảm giác nảy nhẹ. */
+.chip { transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.18s var(--ease-spring); }
+.chip-active { transform: scale(1.05); }
+
+/* Liên kết thẻ SKU lúc focus bàn phím (khả dụng). */
+.sku-card:focus-visible,
+.btn:focus-visible,
+.search-input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Tôn trọng người dùng tắt hiệu ứng chuyển động (giảm chóng mặt). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

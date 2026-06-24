@@ -1,0 +1,12 @@
+# Mẫu cấu hình. Copy file này thành `config.yaml` rồi sửa cho khớp MySQL của bạn:
+#   cp config.example.yaml config.yaml
+server:
+  port: 8080
+  jwt_secret: lot-control-secret-2024
+
+database:
+  host: localhost
+  port: 3306
+  user: root
+  password: ""
+  name: lot_control
