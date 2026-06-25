@@ -93,7 +93,7 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
 
           <div className="form-row">
             <div className="form-group">
-              <label>Ngày sản xuất</label>
+              <label>Ngày sản xuất (NSX)</label>
               <input
                 type="date"
                 value={form.manufacture_date}
