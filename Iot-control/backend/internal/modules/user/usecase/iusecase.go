@@ -10,5 +10,6 @@ import (
 type IUseCase interface {
 	List(ctx context.Context) ([]models.User, error)
 	Create(ctx context.Context, params *dto.CreateUserRequest) (*models.User, error)
+	Update(ctx context.Context, id int64, params *dto.UpdateUserRequest) error
 	Delete(ctx context.Context, id int64) error
 }

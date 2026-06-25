@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { listUsers, createUser, deleteUser } from '../api/client'
+import { listUsers, createUser, updateUser, deleteUser } from '../api/client'
 import type { User } from '../types'
 import ThemeToggle from '../components/ThemeToggle'
 import HeaderMenu from '../components/HeaderMenu'
@@ -13,6 +13,11 @@ export default function UsersPage() {
   const [form, setForm] = useState({ username: '', password: '', full_name: '', branch: '', role: 'staff' })
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState('')
+  // Sửa tài khoản (username không đổi; mật khẩu để trống = giữ nguyên).
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editForm, setEditForm] = useState({ full_name: '', branch: '', role: 'staff', password: '' })
+  const [editError, setEditError] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
   const { user: me } = useAuth()
   const navigate = useNavigate()
 
@@ -41,6 +46,39 @@ export default function UsersPage() {
     if (!confirm('Xóa tài khoản này?')) return
     await deleteUser(id)
     setUsers((prev) => prev.filter((u) => u.id !== id))
+  }
+
+  const openEdit = (u: User) => {
+    setEditingUser(u)
+    setEditForm({ full_name: u.full_name, branch: u.branch, role: u.role, password: '' })
+    setEditError('')
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingUser) return
+    setEditError('')
+    setEditSaving(true)
+    try {
+      await updateUser(editingUser.id, {
+        full_name: editForm.full_name,
+        branch: editForm.branch,
+        role: editForm.role,
+        password: editForm.password || undefined,
+      })
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editingUser.id
+            ? { ...u, full_name: editForm.full_name, branch: editForm.branch, role: editForm.role }
+            : u,
+        ),
+      )
+      setEditingUser(null)
+    } catch (err: any) {
+      setEditError(err?.response?.data?.error || 'Không thể cập nhật tài khoản')
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   return (
@@ -80,8 +118,11 @@ export default function UsersPage() {
                     @{u.username} · Chi nhánh: <strong>{u.branch}</strong>
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                   <span className={`role-badge ${u.role}`}>{u.role === 'admin' ? 'Admin' : 'Nhân viên'}</span>
+                  <button className="btn btn-ghost btn-sm" onClick={() => openEdit(u)}>
+                    Sửa
+                  </button>
                   {u.role !== 'admin' && (
                     <button className="btn btn-danger btn-sm" onClick={() => handleDelete(u.id)}>
                       Xóa
@@ -138,6 +179,56 @@ export default function UsersPage() {
                 <button type="button" className="btn btn-ghost" onClick={() => setShowCreate(false)}>Hủy</button>
                 <button type="submit" className="btn btn-primary" disabled={creating}>
                   {creating ? 'Đang tạo...' : 'Tạo tài khoản'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="modal-overlay" onClick={() => setEditingUser(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="modal-close" onClick={() => setEditingUser(null)} aria-label="Đóng">✕</button>
+            <div className="modal-header modal-header-icon">
+              <span className="modal-icon">✏️</span>
+              <div>
+                <h2>Sửa tài khoản</h2>
+                <p className="modal-subtitle">@{editingUser.username} (tên đăng nhập không đổi)</p>
+              </div>
+            </div>
+            {editError && <div className="alert alert-error">{editError}</div>}
+            <form onSubmit={handleEdit}>
+              <div className="form-group">
+                <label>Họ tên *</label>
+                <input value={editForm.full_name} onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })} required autoFocus />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Chi nhánh *</label>
+                  <input value={editForm.branch} onChange={(e) => setEditForm({ ...editForm, branch: e.target.value })} placeholder="HCM01, HN02..." required />
+                </div>
+                <div className="form-group">
+                  <label>Vai trò</label>
+                  <select value={editForm.role} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
+                    <option value="staff">Nhân viên</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Mật khẩu mới</label>
+                <input
+                  type="password"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  placeholder="Để trống nếu không đổi mật khẩu"
+                />
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditingUser(null)}>Hủy</button>
+                <button type="submit" className="btn btn-primary" disabled={editSaving}>
+                  {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
               </div>
             </form>

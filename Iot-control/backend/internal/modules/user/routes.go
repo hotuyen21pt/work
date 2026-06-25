@@ -16,6 +16,7 @@ func RegisterRoutes(rg *gin.RouterGroup, cfg *config.Config, uc usecase.IUseCase
 	{
 		grp.GET("", h.List)
 		grp.POST("", h.Create)
+		grp.PUT("/:id", h.Update)
 		grp.DELETE("/:id", h.Delete)
 	}
 }

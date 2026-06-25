@@ -13,6 +13,7 @@ type IUserRepository interface {
 	List() ([]models.User, error)
 	Create(user *models.User) error
 	GetByID(id int64) (*models.User, error)
+	Update(id int64, fields map[string]interface{}) error
 	Delete(id int64) error
 }
 
@@ -52,6 +53,10 @@ func (r *userRepository) GetByID(id int64) (*models.User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *userRepository) Update(id int64, fields map[string]interface{}) error {
+	return r.db.Model(&models.User{}).Where("id = ?", id).Updates(fields).Error
 }
 
 func (r *userRepository) Delete(id int64) error {

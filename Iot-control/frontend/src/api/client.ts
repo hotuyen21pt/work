@@ -78,5 +78,12 @@ export const createUser = (data: {
   role?: string
 }) => api.post<User>('/users', data).then((r) => r.data)
 
+export const updateUser = (id: number, data: {
+  full_name: string
+  branch: string
+  role?: string
+  password?: string
+}) => api.put(`/users/${id}`, data)
+
 export const deleteUser = (id: number) =>
   api.delete(`/users/${id}`)
