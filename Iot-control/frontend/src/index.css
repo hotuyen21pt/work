@@ -1066,6 +1066,8 @@ body {
   .sku-card-actions { opacity: 1; transform: none; }
   .sku-card:hover { transform: none; }
   .sku-card:hover::before { opacity: 1; }
+  /* Nút Sửa/Xóa luôn hiển thị → chừa chỗ để không đè lên mã/tên SKU. */
+  .sku-card-top { padding-right: 6.5rem; }
 }
 
 /* ─── Responsive ─────────────────────────────── */

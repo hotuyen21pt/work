@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { listSKUs, createSKU, deleteSKU } from '../api/client'
+import { listSKUs, createSKU, updateSKU, deleteSKU } from '../api/client'
 import type { SKU } from '../types'
 
 import ThemeToggle from '../components/ThemeToggle'
@@ -28,6 +28,11 @@ export default function DashboardPage() {
   // Lọc theo ngày tạo SKU (client-side trên danh sách đã tải).
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  // Sửa SKU (đổi tên + đơn vị; mã SKU không đổi được).
+  const [editingSKU, setEditingSKU] = useState<SKU | null>(null)
+  const [editForm, setEditForm] = useState({ name: '', unit: '' })
+  const [editError, setEditError] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
@@ -66,6 +71,29 @@ export default function DashboardPage() {
     if (!confirm('Xóa SKU này và tất cả lô liên quan?')) return
     await deleteSKU(id)
     fetchSKUs()
+  }
+
+  const openEdit = (sku: SKU, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingSKU(sku)
+    setEditForm({ name: sku.name, unit: sku.unit })
+    setEditError('')
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingSKU) return
+    setEditError('')
+    setEditSaving(true)
+    try {
+      await updateSKU(editingSKU.id, { name: editForm.name, unit: editForm.unit })
+      setEditingSKU(null)
+      fetchSKUs()
+    } catch (err: any) {
+      setEditError(err?.response?.data?.error || 'Không thể cập nhật SKU')
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const filteredSKUs = skus.filter((s) => {
@@ -180,6 +208,9 @@ export default function DashboardPage() {
                 </div>
                 {user?.role === 'admin' && (
                   <div className="sku-card-actions">
+                    <button className="btn btn-ghost btn-sm" onClick={(e) => openEdit(sku, e)}>
+                      Sửa
+                    </button>
                     <button className="btn btn-danger btn-sm" onClick={(e) => handleDelete(sku.id, e)}>
                       Xóa
                     </button>
@@ -278,6 +309,65 @@ export default function DashboardPage() {
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={creating}>
                   {creating ? 'Đang tạo...' : 'Tạo SKU'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingSKU && (
+        <div className="modal-overlay" onClick={() => setEditingSKU(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="modal-close" onClick={() => setEditingSKU(null)} aria-label="Đóng">✕</button>
+            <div className="modal-header modal-header-icon">
+              <span className="modal-icon">✏️</span>
+              <div>
+                <h2>Sửa SKU</h2>
+                <p className="modal-subtitle">Cập nhật tên và đơn vị tính (mã SKU không đổi)</p>
+              </div>
+            </div>
+            {editError && <div className="alert alert-error">{editError}</div>}
+            <form onSubmit={handleEdit}>
+              <div className="form-group">
+                <label>Mã SKU</label>
+                <input value={editingSKU.sku_code} disabled />
+              </div>
+              <div className="form-group">
+                <label>Tên sản phẩm *</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                  autoFocus
+                />
+              </div>
+              <div className="form-group">
+                <label>Đơn vị tính</label>
+                <div className="chip-row">
+                  {COMMON_UNITS.map((u) => (
+                    <button
+                      type="button"
+                      key={u}
+                      className={`chip ${editForm.unit === u ? 'chip-active' : ''}`}
+                      onClick={() => setEditForm({ ...editForm, unit: u })}
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  value={editForm.unit}
+                  onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
+                  placeholder="hoặc nhập đơn vị khác..."
+                />
+              </div>
+              <div className="form-actions">
+                <button type="button" className="btn btn-ghost" onClick={() => setEditingSKU(null)}>
+                  Hủy
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={editSaving}>
+                  {editSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
                 </button>
               </div>
             </form>
