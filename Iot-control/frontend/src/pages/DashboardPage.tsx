@@ -254,7 +254,7 @@ export default function DashboardPage() {
                   <input
                     value={newSKU.sku_code}
                     onChange={(e) => setNewSKU({ ...newSKU, sku_code: e.target.value })}
-                    placeholder="Enter Code SKU"
+                    placeholder="Enter SKU Code"
                     required
                     autoFocus
                   />
@@ -275,7 +275,7 @@ export default function DashboardPage() {
                 <input
                   value={newSKU.name}
                   onChange={(e) => setNewSKU({ ...newSKU, name: e.target.value })}
-                  placeholder="Enter Name SKU"
+                  placeholder="Enter SKU Name"
                   required
                 />
               </div>
