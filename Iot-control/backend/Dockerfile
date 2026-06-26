@@ -1,5 +1,6 @@
 # --- Build stage ---
-FROM golang:1.22-alpine AS build
+# go.mod yêu cầu go 1.25 — base image phải >= phiên bản này, nếu không go build báo lỗi.
+FROM golang:1.25-alpine AS build
 WORKDIR /app
 
 # Tải dependencies trước để tận dụng cache.

@@ -1,43 +1,118 @@
-# Render Blueprint — deploy cả stack (Postgres + backend + frontend) ở plan FREE.
+# Render Blueprint — dựng toàn bộ stack từ GitHub.
+# File NÀY (ở GỐC repo) là file Render thực sự đọc. rootDir trỏ vào thư mục con Iot-control.
 # Cách dùng: Render Dashboard → New → Blueprint → chọn repo này → Apply.
-# (File phải nằm ở GỐC repo; rootDir bên dưới trỏ vào thư mục con Iot-control.)
+#
+# 5 thành phần:
+#   - lot-control-db          : PostgreSQL (managed)
+#   - lot-control-minio       : MinIO (object storage) + Render Disk lưu ảnh bền vững
+#   - lot-control-box-counter : dịch vụ đếm box (YOLO/torch)
+#   - lot-control-api         : backend Go
+#   - lot-control-web         : frontend tĩnh (Vite)
+#
+# LƯU Ý:
+#   * Render Disk CHỈ chạy trên instance trả phí -> lot-control-minio plan "starter".
+#   * lot-control-box-counter nạp torch+YOLO rất ngốn RAM; free (512MB) dễ OOM khi
+#     load model -> nâng "standard" nếu bị crash.
+#   * Biến `sync: false` phải tự điền trên dashboard sau lần deploy đầu.
 
 databases:
   - name: lot-control-db
     databaseName: lot_control
     user: lot_control
-    plan: free                 # FREE: 1GB, BỊ XOÁ sau 30 ngày — chỉ hợp thử nghiệm
+    plan: free                 # FREE: bị xoá sau ~90 ngày — nâng plan để giữ lâu dài.
     region: singapore
     postgresMajorVersion: "16"
 
 services:
-  # ── Backend (Go, Docker) ───────────────────────────────
+  # ── MinIO (object storage) + Render Disk ───────────────────────────────────
+  # API S3 nghe ở :10000 (port web mặc định Render) để route đúng cổng.
+  - name: lot-control-minio
+    type: web
+    runtime: image
+    image:
+      url: docker.io/minio/minio:latest
+    plan: starter              # bắt buộc trả phí vì có Disk.
+    region: singapore
+    dockerCommand: minio server /data --address ":10000" --console-address ":9001"
+    healthCheckPath: /minio/health/live
+    disk:
+      name: minio-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      # Đặt GIỐNG HỆT MINIO_ACCESS_KEY / MINIO_SECRET_KEY bên lot-control-api.
+      - key: MINIO_ROOT_USER
+        sync: false
+      - key: MINIO_ROOT_PASSWORD
+        sync: false
+
+  # ── Box counter (computer vision) ──────────────────────────────────────────
+  - name: lot-control-box-counter
+    type: web
+    runtime: docker
+    plan: free                 # cảnh báo: torch/YOLO dễ OOM ở free, nâng "standard" nếu crash.
+    region: singapore
+    rootDir: Iot-control/box-counter-service
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: MODEL_PATH
+        value: /app/model/best.pt
+      - key: CONF_THRESHOLD
+        value: "0.5"
+      # Model train ra gán thùng vào lớp "-" (xem output notebook).
+      # Xác nhận lại bằng GET /health > field classes.
+      - key: BOX_CLASS_NAME
+        value: "-"
+
+  # ── Backend API (Go, Docker) ───────────────────────────────────────────────
   - name: lot-control-api
     type: web
     runtime: docker
-    plan: free                 # FREE: ngủ sau 15' không dùng → request đầu chậm ~50s
+    plan: free                 # FREE: ngủ sau 15' không dùng → request đầu chậm ~50s.
     region: singapore
     rootDir: Iot-control/backend
-    dockerfilePath: ./Dockerfile     # tương đối theo rootDir
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     envVars:
-      - key: DATABASE_URL            # config.go đọc thẳng chuỗi này
+      - key: DATABASE_URL              # config.go đọc thẳng chuỗi này.
         fromDatabase:
           name: lot-control-db
           property: connectionString
-      - key: JWT_SECRET              # Render tự sinh chuỗi ngẫu nhiên mạnh
+      - key: JWT_SECRET                # Render tự sinh chuỗi ngẫu nhiên mạnh.
         generateValue: true
-      # PORT do Render tự đặt; config.go đã đọc PORT nên không cần khai báo.
+      # MinIO: endpoint nội bộ (host:port) tự lấy từ service minio — không cần scheme.
+      - key: MINIO_ENDPOINT
+        fromService:
+          type: web
+          name: lot-control-minio
+          property: hostport
+      - key: MINIO_USE_SSL
+        value: "false"               # mạng nội bộ Render là HTTP.
+      - key: MINIO_BUCKET
+        value: lot-images
+      # PHẢI khớp MINIO_ROOT_USER / MINIO_ROOT_PASSWORD ở lot-control-minio.
+      - key: MINIO_ACCESS_KEY
+        sync: false
+      - key: MINIO_SECRET_KEY
+        sync: false
+      # URL công khai MinIO để dựng link ảnh cho trình duyệt.
+      - key: MINIO_PUBLIC_ENDPOINT
+        value: https://lot-control-minio.onrender.com
+      # URL dịch vụ đếm box.
+      - key: BOX_COUNTER_URL
+        value: https://lot-control-box-counter.onrender.com
+      # PORT do Render tự đặt; config.go đã đọc PORT.
 
-  # ── Frontend (Vite static site) ────────────────────────
+  # ── Frontend (Vite static site) ────────────────────────────────────────────
   - name: lot-control-web
     type: web
-    runtime: static            # static site free, KHÔNG ngủ (CDN toàn cầu, không có region)
+    runtime: static            # static site free, KHÔNG ngủ (CDN toàn cầu, không có region).
     rootDir: Iot-control/frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
     envVars:
-      # Frontend gọi thẳng backend (CORS đã mở). Đổi nếu URL backend khác.
       - key: VITE_API_BASE_URL
         value: https://lot-control-api.onrender.com/api
     routes:
