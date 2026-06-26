@@ -179,3 +179,15 @@ docker compose down -v           # tắt + xóa dữ liệu DB
 - Backend: `http://localhost:8080` — frontend (`npm run dev`) proxy `/api` vào đây, không cần đổi gì.
 - MySQL: kết nối Navicat tới `localhost:3307`, user `root`, password `lot123456` (cấu hình trong `docker-compose.yml`).
 - Không cần cài MySQL trên máy; container đã có sẵn. Frontend vẫn chạy ngoài Docker (`npm run dev`).
+
+
+1. Chạy notebook trên Kaggle (không chạy local — nó cần GPU device=0 và dataset ở /kaggle/input/...). Train xong, weight nằm ở:
+/kaggle/working/box_counter/yolo11/weights/best.pt
+2. Tải file đó về, đặt đè vào:
+C:\Users\User1\Desktop\work\work\Iot-control\box-counter-service\model\best.pt
+2. (đúng tên best.pt, đúng thư mục — không cần đổi gì khác)
+3. Commit + push để Render build lại image (vì model giờ bake vào image):
+git add box-counter-service/model/best.pt
+git commit -m "Update YOLO weights"
+git push
+3. Local thì: docker compose build box-counter rồi docker compose up -d box-counte
