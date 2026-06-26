@@ -21,24 +21,24 @@ def _env_bool(name: str, default: bool) -> bool:
 
 # Cấu hình qua biến môi trường.
 MODEL_PATH = os.getenv("MODEL_PATH", "/app/model/best.pt")
-CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.25"))
+CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.3"))
 # Kích thước ảnh khi suy luận. Lớn hơn (960/1280) giúp bắt được box nhỏ/ở xa,
 # đổi lại chậm hơn và tốn RAM hơn.
-IMGSZ = int(os.getenv("IMGSZ", "1280"))
+IMGSZ = int(os.getenv("IMGSZ", "960"))
 # Ngưỡng IoU cho NMS. Cao hơn -> ít gộp/loại các box chồng nhau -> giữ được
 # nhiều đối tượng đứng sát nhau hơn (thử 0.6 khi box xếp khít).
-IOU_THRESHOLD = float(os.getenv("IOU_THRESHOLD", "0.6"))
+IOU_THRESHOLD = float(os.getenv("IOU_THRESHOLD", "0.7"))
 # Lọc theo diện tích bounding box tính bằng % diện tích ảnh (không phụ thuộc
 # độ phân giải). Box nhỏ hơn ngưỡng bị bỏ qua (vật ở xa / nhận nhầm).
 # Ví dụ 0.5 = bỏ box chiếm dưới 0.5% diện tích ảnh. Đặt 0 để tắt lọc.
-MIN_BOX_AREA_PCT = float(os.getenv("MIN_BOX_AREA_PCT", "0.5"))
+MIN_BOX_AREA_PCT = float(os.getenv("MIN_BOX_AREA_PCT", "0.3"))
 
 # ── Tiền xử lý ảnh đầu vào (giúp model đếm chính xác hơn) ──────────────────
 # Sửa hướng ảnh theo EXIF: ảnh chụp điện thoại hay bị xoay -> không sửa thì
 # model nhìn ảnh nằm ngang và đếm sai. Nên để bật.
 PREPROCESS_EXIF = _env_bool("PREPROCESS_EXIF", True)
 # Cân bằng tương phản tự động: hữu ích cho ảnh thiếu sáng / ngược sáng.
-PREPROCESS_AUTOCONTRAST = _env_bool("PREPROCESS_AUTOCONTRAST", True)
+PREPROCESS_AUTOCONTRAST = _env_bool("PREPROCESS_AUTOCONTRAST", False)
 # % pixel sáng/tối nhất bị cắt khi autocontrast (tránh nhiễu cực trị).
 AUTOCONTRAST_CUTOFF = float(os.getenv("AUTOCONTRAST_CUTOFF", "1"))
 # Làm nét: giúp viền thùng rõ hơn cho ảnh hơi mờ (mặc định tắt vì dễ tạo nhiễu).
