@@ -37,16 +37,25 @@ export default function BoxReviewModal({ file, initialBoxes, index, total, onCon
   const drawingRef = useRef(false)
   const startRef = useRef({ x: 0, y: 0 })
 
-  // Đo kích thước ảnh hiển thị; cập nhật khi load và khi đổi kích thước cửa sổ.
+  // Tính kích thước hiển thị: phóng ảnh vừa khít khung (92% rộng × 80% cao
+  // màn hình), giữ đúng tỉ lệ. Cho phép phóng TO ảnh nhỏ để dễ vẽ box.
+  const computeSize = () => {
+    const el = imgRef.current
+    if (!el || !el.naturalWidth || !el.naturalHeight) return
+    const maxW = window.innerWidth * 0.92 - 64 // trừ padding modal
+    const maxH = window.innerHeight * 0.8
+    const scale = Math.min(maxW / el.naturalWidth, maxH / el.naturalHeight)
+    setSize({
+      w: Math.max(1, Math.round(el.naturalWidth * scale)),
+      h: Math.max(1, Math.round(el.naturalHeight * scale)),
+    })
+  }
+
+  // Tính lại khi đổi kích thước cửa sổ / xoay màn hình.
   useLayoutEffect(() => {
-    const measure = () => {
-      const el = imgRef.current
-      if (el) setSize({ w: el.clientWidth, h: el.clientHeight })
-    }
-    measure()
-    const ro = new ResizeObserver(measure)
-    if (imgRef.current) ro.observe(imgRef.current)
-    return () => ro.disconnect()
+    const onResize = () => computeSize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   // Lấy toạ độ chuẩn hoá 0..1 từ vị trí con trỏ trên ảnh.
@@ -117,8 +126,9 @@ export default function BoxReviewModal({ file, initialBoxes, index, total, onCon
         <div
           style={{
             position: 'relative',
-            display: 'inline-block',
-            maxWidth: '100%',
+            display: 'block',
+            width: size.w || 'auto',
+            height: size.h || 'auto',
             margin: '0 auto',
             lineHeight: 0,
             userSelect: 'none',
@@ -128,11 +138,10 @@ export default function BoxReviewModal({ file, initialBoxes, index, total, onCon
             ref={imgRef}
             src={url.current}
             alt="Ảnh kiểm đếm"
-            onLoad={() => {
-              const el = imgRef.current
-              if (el) setSize({ w: el.clientWidth, h: el.clientHeight })
-            }}
-            style={{ maxWidth: '100%', maxHeight: '80vh', display: 'block', borderRadius: 8 }}
+            onLoad={computeSize}
+            width={size.w || undefined}
+            height={size.h || undefined}
+            style={{ display: 'block', borderRadius: 8 }}
             draggable={false}
           />
           <svg
