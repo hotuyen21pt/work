@@ -60,7 +60,7 @@ services:
       - key: MODEL_PATH
         value: /app/model/best.pt
       - key: CONF_THRESHOLD
-        value: "0.3"
+        value: "0.5"
       # Kích thước ảnh suy luận — 960 cân bằng độ chính xác/RAM (1280 dễ OOM).
       - key: IMGSZ
         value: "960"

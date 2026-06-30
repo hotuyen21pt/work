@@ -21,7 +21,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 # Cấu hình qua biến môi trường.
 MODEL_PATH = os.getenv("MODEL_PATH", "/app/model/best.pt")
-CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.3"))
+CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.5"))
 # Kích thước ảnh khi suy luận. Lớn hơn (960/1280) giúp bắt được box nhỏ/ở xa,
 # đổi lại chậm hơn và tốn RAM hơn.
 IMGSZ = int(os.getenv("IMGSZ", "960"))
@@ -79,8 +79,13 @@ def preprocess(image: Image.Image) -> Image.Image:
     return image
 
 
-def count_boxes(image: Image.Image) -> int:
-    """Đếm số object thuộc lớp box trong một ảnh PIL."""
+def detect_boxes(image: Image.Image) -> list[dict]:
+    """Phát hiện các object thuộc lớp box trong một ảnh PIL.
+
+    Trả về danh sách box với toạ độ CHUẨN HOÁ 0..1 theo ảnh (đã sửa EXIF):
+    [{"x1", "y1", "x2", "y2", "conf"}]. Toạ độ chuẩn hoá giúp frontend vẽ
+    đúng ở mọi độ phân giải và đổi thẳng sang định dạng YOLO khi lưu dataset.
+    """
     results = model.predict(
         source=image,
         conf=CONF_THRESHOLD,
@@ -88,20 +93,30 @@ def count_boxes(image: Image.Image) -> int:
         iou=IOU_THRESHOLD,
         verbose=False,
     )
-    img_area = float(image.width * image.height)
-    count = 0
+    w = float(image.width)
+    h = float(image.height)
+    img_area = w * h
+    boxes: list[dict] = []
     for r in results:
         for box in r.boxes:
             name = CLASS_NAMES[int(box.cls)].lower()
             if name != BOX_CLASS_NAME:
                 continue
             # Lọc theo diện tích: bỏ qua box quá nhỏ (vật ở xa / nhận nhầm).
-            x1, y1, x2, y2 = box.xyxy[0]
-            box_area = float((x2 - x1) * (y2 - y1))
+            x1, y1, x2, y2 = (float(v) for v in box.xyxy[0])
+            box_area = (x2 - x1) * (y2 - y1)
             if img_area > 0 and (box_area / img_area) * 100 < MIN_BOX_AREA_PCT:
                 continue
-            count += 1
-    return count
+            if w <= 0 or h <= 0:
+                continue
+            boxes.append({
+                "x1": x1 / w,
+                "y1": y1 / h,
+                "x2": x2 / w,
+                "y2": y2 / h,
+                "conf": float(box.conf[0]) if box.conf is not None else 0.0,
+            })
+    return boxes
 
 
 @app.get("/health")
@@ -144,8 +159,15 @@ async def count(files: list[UploadFile] = File(...)):
             per_image.append({"filename": f.filename, "count": 0, "error": "ảnh không hợp lệ"})
             continue
 
-        n = count_boxes(image)
+        boxes = detect_boxes(image)
+        n = len(boxes)
         total += n
-        per_image.append({"filename": f.filename, "count": n})
+        per_image.append({
+            "filename": f.filename,
+            "count": n,
+            "width": image.width,
+            "height": image.height,
+            "boxes": boxes,
+        })
 
     return {"total": total, "per_image": per_image}

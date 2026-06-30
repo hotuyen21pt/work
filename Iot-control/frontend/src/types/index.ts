@@ -42,9 +42,21 @@ export interface LotImage {
   created_at: string
 }
 
+// DetBox là toạ độ một bounding box, chuẩn hoá 0..1 theo ảnh.
+export interface DetBox {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  conf?: number
+}
+
 export interface BoxCountItem {
   filename: string
   count: number
+  width?: number
+  height?: number
+  boxes?: DetBox[]
   error?: string
 }
 

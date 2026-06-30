@@ -21,4 +21,6 @@ type IUseCase interface {
 
 	// Đếm box bằng computer vision.
 	CountBoxes(ctx context.Context, files []*multipart.FileHeader) (*BoxCountResult, error)
+	// Lưu ảnh gốc + nhãn YOLO làm dữ liệu huấn luyện.
+	SaveDataset(ctx context.Context, image *multipart.FileHeader, labels string) error
 }

@@ -18,13 +18,20 @@ docker compose restart box-counter
 ### `POST /count`
 Form-data `files`: một hoặc nhiều ảnh.
 
-Phản hồi:
+Phản hồi (toạ độ box chuẩn hoá 0..1 theo ảnh đã sửa EXIF):
 ```json
 {
   "total": 42,
   "per_image": [
-    { "filename": "a.jpg", "count": 20 },
-    { "filename": "b.jpg", "count": 22 }
+    {
+      "filename": "a.jpg",
+      "count": 20,
+      "width": 4032,
+      "height": 3024,
+      "boxes": [
+        { "x1": 0.10, "y1": 0.20, "x2": 0.25, "y2": 0.40, "conf": 0.87 }
+      ]
+    }
   ]
 }
 ```

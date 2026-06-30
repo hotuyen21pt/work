@@ -6,8 +6,10 @@ import {
   uploadLotImages,
   deleteLotImage,
   countBoxes,
+  saveDataset,
 } from '../api/client'
-import type { Lot, LotImage } from '../types'
+import type { Lot, LotImage, DetBox } from '../types'
+import BoxReviewModal from './BoxReviewModal'
 
 interface Props {
   skuId: number
@@ -43,6 +45,11 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
   // Trạng thái đếm box tự động.
   const [counting, setCounting] = useState(false)
   const [countMsg, setCountMsg] = useState('')
+  // Hàng đợi xem lại & chỉnh box cho từng ảnh vừa upload.
+  const [reviewQueue, setReviewQueue] = useState<{ file: File; boxes: DetBox[] }[]>([])
+  const [reviewIndex, setReviewIndex] = useState(0)
+  // Kết quả đã xác nhận (ảnh + số box cuối cùng) tích luỹ qua hàng đợi.
+  const [reviewResults, setReviewResults] = useState<{ file: File; count: number }[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
@@ -63,25 +70,6 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
     if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
 
-  // runCount gọi dịch vụ đếm box, CỘNG DỒN tổng vào ô Số lượng,
-  // và trả về số box của TỪNG ảnh (theo đúng thứ tự files) để lưu kèm ảnh.
-  const runCount = async (files: File[]): Promise<number[]> => {
-    setCounting(true)
-    setCountMsg('Đang đếm box…')
-    try {
-      const res = await countBoxes(files)
-      setForm((prev) => ({ ...prev, qty: Number(prev.qty || 0) + res.total }))
-      setCountMsg(`Đã đếm: +${res.total} box`)
-      return files.map((_, i) => res.per_image?.[i]?.count ?? 0)
-    } catch (err: any) {
-      setCountMsg('')
-      setImgError(err?.response?.data?.error || 'Đếm box thất bại')
-      return files.map(() => 0)
-    } finally {
-      setCounting(false)
-    }
-  }
-
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) {
@@ -91,17 +79,44 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
     setImgError('')
     resetInputs()
 
-    // Đếm trước để biết số box từng ảnh (đồng thời cộng tổng vào Số lượng).
-    const counts = await runCount(files)
+    // Đếm/phát hiện box, rồi mở hàng đợi xem lại để người dùng chỉnh tay.
+    setCounting(true)
+    setCountMsg('Đang phát hiện box…')
+    let res
+    try {
+      res = await countBoxes(files)
+    } catch (err: any) {
+      setCountMsg('')
+      setImgError(err?.response?.data?.error || 'Đếm box thất bại')
+      setCounting(false)
+      return
+    }
+    setCounting(false)
+    setCountMsg(`Đã phát hiện ${res.total} box — kiểm tra lại từng ảnh`)
+    setReviewResults([])
+    setReviewIndex(0)
+    setReviewQueue(files.map((f, i) => ({ file: f, boxes: res.per_image?.[i]?.boxes ?? [] })))
+  }
 
+  // Sau khi review hết hàng đợi: cộng tổng vào Số lượng và đưa ảnh vào luồng
+  // pending (lô mới) hoặc upload ngay (lô đang sửa), với số box đã chỉnh tay.
+  const finalizeReview = async (results: { file: File; count: number }[]) => {
+    if (results.length === 0) {
+      setCountMsg('')
+      return
+    }
+    const totalCount = results.reduce((s, r) => s + r.count, 0)
+    setForm((prev) => ({ ...prev, qty: Number(prev.qty || 0) + totalCount }))
+    setCountMsg(`Đã thêm: +${totalCount} box`)
+
+    const files = results.map((r) => r.file)
+    const counts = results.map((r) => r.count)
     if (!isEdit || !lot?.id) {
-      // Tạo lô mới: chưa có lot.id, giữ ảnh kèm count trong bộ nhớ để upload sau khi lưu.
       setPending((prev) => [
         ...prev,
-        ...files.map((f, i) => ({ file: f, url: URL.createObjectURL(f), count: counts[i] ?? 0 })),
+        ...files.map((f, i) => ({ file: f, url: URL.createObjectURL(f), count: counts[i] })),
       ])
     } else {
-      // Sửa lô: upload ngay lên server kèm count từng ảnh.
       setUploading(true)
       try {
         const created = await uploadLotImages(lot.id, files, counts)
@@ -112,6 +127,36 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
         setUploading(false)
       }
     }
+  }
+
+  // Chuyển sang ảnh tiếp theo trong hàng đợi, hoặc kết thúc.
+  const advanceReview = (results: { file: File; count: number }[]) => {
+    const next = reviewIndex + 1
+    if (next < reviewQueue.length) {
+      setReviewResults(results)
+      setReviewIndex(next)
+    } else {
+      void finalizeReview(results)
+      setReviewQueue([])
+      setReviewIndex(0)
+      setReviewResults([])
+    }
+  }
+
+  const handleReviewConfirm = (boxes: DetBox[], count: number) => {
+    const item = reviewQueue[reviewIndex]
+    if (item) {
+      // Lưu dataset (ảnh gốc + nhãn) — lỗi chỉ cảnh báo, không chặn luồng.
+      saveDataset(item.file, boxes).catch(() => setImgError('Lưu dataset thất bại (đã bỏ qua)'))
+      advanceReview([...reviewResults, { file: item.file, count }])
+    } else {
+      advanceReview(reviewResults)
+    }
+  }
+
+  const handleReviewCancel = () => {
+    // Bỏ qua ảnh hiện tại: không tính số lượng, không lưu dataset.
+    advanceReview(reviewResults)
   }
 
   const handleRemovePending = (index: number) => {
@@ -180,7 +225,10 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
     }
   }
 
+  const reviewing = reviewQueue.length > 0 && reviewIndex < reviewQueue.length
+
   return (
+    <>
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <button type="button" className="modal-close" onClick={onClose} aria-label="Đóng">✕</button>
@@ -428,5 +476,18 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
         </form>
       </div>
     </div>
+
+    {reviewing && (
+      <BoxReviewModal
+        key={reviewIndex}
+        file={reviewQueue[reviewIndex].file}
+        initialBoxes={reviewQueue[reviewIndex].boxes}
+        index={reviewIndex}
+        total={reviewQueue.length}
+        onConfirm={handleReviewConfirm}
+        onCancel={handleReviewCancel}
+      />
+    )}
+    </>
   )
 }

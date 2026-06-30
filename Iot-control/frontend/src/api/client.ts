@@ -98,6 +98,26 @@ export const countBoxes = (files: File[]) => {
     .then((r) => r.data)
 }
 
+// Lưu ảnh gốc + nhãn box (định dạng YOLO) làm dữ liệu huấn luyện.
+// boxes là toạ độ chuẩn hoá 0..1; mỗi dòng nhãn: "0 xc yc w h".
+export const saveDataset = (file: File, boxes: { x1: number; y1: number; x2: number; y2: number }[]) => {
+  const labels = boxes
+    .map((b) => {
+      const xc = (b.x1 + b.x2) / 2
+      const yc = (b.y1 + b.y2) / 2
+      const w = Math.abs(b.x2 - b.x1)
+      const h = Math.abs(b.y2 - b.y1)
+      return `0 ${xc.toFixed(6)} ${yc.toFixed(6)} ${w.toFixed(6)} ${h.toFixed(6)}`
+    })
+    .join('\n')
+  const form = new FormData()
+  form.append('image', file)
+  form.append('labels', labels)
+  return api
+    .post('/lots/dataset', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    .then((r) => r.data)
+}
+
 // Users
 export const listUsers = () =>
   api.get<User[]>('/users').then((r) => r.data)

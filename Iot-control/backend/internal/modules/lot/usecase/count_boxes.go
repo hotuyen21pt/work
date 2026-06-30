@@ -21,9 +21,21 @@ type BoxCountResult struct {
 
 // BoxCountItem là số box đếm được trên một ảnh.
 type BoxCountItem struct {
-	Filename string `json:"filename"`
-	Count    int    `json:"count"`
-	Error    string `json:"error,omitempty"`
+	Filename string  `json:"filename"`
+	Count    int     `json:"count"`
+	Width    float64 `json:"width,omitempty"`
+	Height   float64 `json:"height,omitempty"`
+	Boxes    []Box   `json:"boxes,omitempty"`
+	Error    string  `json:"error,omitempty"`
+}
+
+// Box là toạ độ một bounding box đã phát hiện, chuẩn hoá 0..1 theo ảnh.
+type Box struct {
+	X1   float64 `json:"x1"`
+	Y1   float64 `json:"y1"`
+	X2   float64 `json:"x2"`
+	Y2   float64 `json:"y2"`
+	Conf float64 `json:"conf"`
 }
 
 // CountBoxes chuyển tiếp các ảnh sang dịch vụ box-counter và trả về số lượng đếm được.
