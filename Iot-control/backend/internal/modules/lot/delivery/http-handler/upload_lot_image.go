@@ -33,7 +33,21 @@ func (handler *lotHandler) UploadImages(ctx *gin.Context) {
 		counts[i] = n
 	}
 
-	res, err := handler.uc.UploadImages(ctx, lotID, files, counts)
+	// boxes[i] là JSON danh sách box của ảnh i; edited[i]="true" thì lưu nhãn dataset.
+	boxesRaw := form.Value["boxes"]
+	editedRaw := form.Value["edited"]
+	boxes := make([][]byte, len(files))
+	edited := make([]bool, len(files))
+	for i := range files {
+		if i < len(boxesRaw) && boxesRaw[i] != "" {
+			boxes[i] = []byte(boxesRaw[i])
+		}
+		if i < len(editedRaw) {
+			edited[i] = editedRaw[i] == "true"
+		}
+	}
+
+	res, err := handler.uc.UploadImages(ctx, lotID, files, counts, boxes, edited)
 	if err != nil {
 		ctx.AbortWithStatusJSON(httperrors.GetStatusCode(err), httperrors.ResponseError{Message: err.Error()})
 		return

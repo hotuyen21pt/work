@@ -18,6 +18,8 @@ import (
 type IStorage interface {
 	// Upload đẩy dữ liệu lên bucket với key cho trước, trả về URL công khai.
 	Upload(ctx context.Context, objectKey string, reader io.Reader, size int64, contentType string) (string, error)
+	// Copy sao chép object trong cùng bucket (server-side, không tải về).
+	Copy(ctx context.Context, srcKey, dstKey string) error
 	// Remove xóa object theo key (bỏ qua nếu không tồn tại).
 	Remove(ctx context.Context, objectKey string) error
 }
@@ -88,6 +90,17 @@ func (s *minioStorage) Upload(ctx context.Context, objectKey string, reader io.R
 		return "", fmt.Errorf("upload object %q: %w", objectKey, err)
 	}
 	return fmt.Sprintf("%s/%s/%s", s.publicEndpoint, s.bucket, objectKey), nil
+}
+
+func (s *minioStorage) Copy(ctx context.Context, srcKey, dstKey string) error {
+	_, err := s.client.CopyObject(ctx,
+		minio.CopyDestOptions{Bucket: s.bucket, Object: dstKey},
+		minio.CopySrcOptions{Bucket: s.bucket, Object: srcKey},
+	)
+	if err != nil {
+		return fmt.Errorf("copy object %q -> %q: %w", srcKey, dstKey, err)
+	}
+	return nil
 }
 
 func (s *minioStorage) Remove(ctx context.Context, objectKey string) error {

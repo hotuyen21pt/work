@@ -1,6 +1,47 @@
 package models
 
-import "time"
+import (
+	"database/sql/driver"
+	"fmt"
+	"time"
+)
+
+// JSONText là JSON thô lưu ở cột text: đọc/ghi DB qua Scan/Value và giữ nguyên
+// dạng mảng JSON khi (de)serialize API. Dùng vì json.RawMessage không tự Scan được.
+type JSONText []byte
+
+func (j *JSONText) Scan(src any) error {
+	switch v := src.(type) {
+	case nil:
+		*j = nil
+	case string:
+		*j = JSONText(v)
+	case []byte:
+		*j = append((*j)[:0], v...)
+	default:
+		return fmt.Errorf("JSONText.Scan: kiểu không hỗ trợ %T", src)
+	}
+	return nil
+}
+
+func (j JSONText) Value() (driver.Value, error) {
+	if len(j) == 0 {
+		return nil, nil
+	}
+	return string(j), nil
+}
+
+func (j JSONText) MarshalJSON() ([]byte, error) {
+	if len(j) == 0 {
+		return []byte("null"), nil
+	}
+	return j, nil
+}
+
+func (j *JSONText) UnmarshalJSON(data []byte) error {
+	*j = append((*j)[:0], data...)
+	return nil
+}
 
 type User struct {
 	ID           int64     `json:"id" gorm:"primaryKey"`
@@ -54,10 +95,22 @@ type LotImage struct {
 	URL       string    `json:"url" gorm:"column:url;size:1000;not null"`
 	// Count là số box đếm được trên chính ảnh này (để khi xóa ảnh thì trừ đúng số đã cộng).
 	Count     int       `json:"count" gorm:"column:count;not null;default:0"`
+	// Boxes là toạ độ các bounding box (JSON, chuẩn hoá 0..1) của chính ảnh này —
+	// nguồn sự thật để mở lại chỉnh nhãn. NULL khi chưa có box. Không lưu chuỗi rỗng.
+	Boxes     JSONText `json:"boxes" gorm:"column:boxes;type:text"`
 	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
 }
 
 func (LotImage) TableName() string { return "lot_images" }
+
+// DatasetCounter là bộ đếm số thứ tự theo ngày để đặt tên ảnh/nhãn đồng bộ
+// dạng <YYYYMMDD><seq>, vd 202607010001. Mỗi ngày một dòng, seq tăng dần.
+type DatasetCounter struct {
+	Day string `json:"day" gorm:"column:day;primaryKey;size:8"`
+	Seq int    `json:"seq" gorm:"column:seq;not null;default:0"`
+}
+
+func (DatasetCounter) TableName() string { return "dataset_counters" }
 
 // Claims là payload JWT, được AuthMiddleware nạp vào gin.Context.
 type Claims struct {

@@ -25,7 +25,11 @@ type ILotRepository interface {
 	CreateImage(img *models.LotImage) error
 	ListImagesByLot(lotID int64) ([]models.LotImage, error)
 	GetImageByID(imageID int64) (*models.LotImage, error)
+	UpdateImageBoxes(imageID int64, boxes []byte, count int) error
 	DeleteImage(imageID int64) error
+
+	// NextDatasetSeq tăng và trả về số thứ tự tiếp theo của ngày (đặt tên ảnh/nhãn).
+	NextDatasetSeq(day string) (int, error)
 }
 
 type lotRepository struct {

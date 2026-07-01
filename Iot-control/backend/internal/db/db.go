@@ -27,7 +27,7 @@ func Init(cfg *config.Config) (*gorm.DB, error) {
 	}
 
 	// Tạo/cập nhật bảng.
-	if err := gdb.AutoMigrate(&models.User{}, &models.SKU{}, &models.Lot{}, &models.LotImage{}); err != nil {
+	if err := gdb.AutoMigrate(&models.User{}, &models.SKU{}, &models.Lot{}, &models.LotImage{}, &models.DatasetCounter{}); err != nil {
 		return nil, fmt.Errorf("automigrate: %w", err)
 	}
 

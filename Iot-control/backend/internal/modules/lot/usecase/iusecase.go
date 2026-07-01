@@ -16,11 +16,10 @@ type IUseCase interface {
 
 	// Ảnh của lô.
 	ListImages(ctx context.Context, lotID int64) ([]models.LotImage, error)
-	UploadImages(ctx context.Context, lotID int64, files []*multipart.FileHeader, counts []int) ([]models.LotImage, error)
+	UploadImages(ctx context.Context, lotID int64, files []*multipart.FileHeader, counts []int, boxes [][]byte, edited []bool) ([]models.LotImage, error)
+	UpdateImageBoxes(ctx context.Context, lotID, imageID int64, boxesJSON []byte, edited bool) error
 	DeleteImage(ctx context.Context, lotID, imageID int64) error
 
 	// Đếm box bằng computer vision.
 	CountBoxes(ctx context.Context, files []*multipart.FileHeader) (*BoxCountResult, error)
-	// Lưu ảnh gốc + nhãn YOLO làm dữ liệu huấn luyện.
-	SaveDataset(ctx context.Context, image *multipart.FileHeader, labels string) error
 }
