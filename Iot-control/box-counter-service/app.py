@@ -21,7 +21,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 # Cấu hình qua biến môi trường.
 MODEL_PATH = os.getenv("MODEL_PATH", "/app/model/best.pt")
-CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.4"))
+CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.5"))
 # Kích thước ảnh khi suy luận. Lớn hơn (960/1280) giúp bắt được box nhỏ/ở xa,
 # đổi lại chậm hơn và tốn RAM hơn.
 IMGSZ = int(os.getenv("IMGSZ", "960"))

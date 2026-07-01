@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { DetBox } from '../types'
+import { countBoxes } from '../api/client'
 
 interface Props {
   src: string // URL ảnh để hiển thị (object URL của file mới hoặc URL ảnh server)
@@ -24,6 +25,30 @@ const MIN_SIDE = 0.01
 const ZOOM_MIN = 1
 const ZOOM_MAX = 6
 
+// ── Dò lại box theo vùng (double-click) ──────────────────────────────────
+// Số box đã detect gần điểm click nhất dùng để suy ra kích thước box thật.
+const NEIGHBORS_K = 3
+// Khung crop = hệ số này × kích thước trung bình của box lân cận (đủ rộng để
+// bao khoảng trống + vài box xung quanh làm ngữ cảnh cho model).
+const CROP_MULTIPLIER = 3
+// Box mới trùng box cũ (IoU ≥ ngưỡng) thì bỏ — chỉ thêm box thật sự mới.
+const DEDUP_IOU = 0.25
+
+// IoU của 2 box (toạ độ chuẩn hoá 0..1).
+const iou = (a: DetBox, b: DetBox): number => {
+  const ix1 = Math.max(a.x1, b.x1)
+  const iy1 = Math.max(a.y1, b.y1)
+  const ix2 = Math.min(a.x2, b.x2)
+  const iy2 = Math.min(a.y2, b.y2)
+  const iw = Math.max(0, ix2 - ix1)
+  const ih = Math.max(0, iy2 - iy1)
+  const inter = iw * ih
+  const areaA = (a.x2 - a.x1) * (a.y2 - a.y1)
+  const areaB = (b.x2 - b.x1) * (b.y2 - b.y1)
+  const uni = areaA + areaB - inter
+  return uni > 0 ? inter / uni : 0
+}
+
 type Mode = 'draw' | 'move' | 'pan'
 type Corner = 'nw' | 'ne' | 'sw' | 'se'
 type View = { zoom: number; x: number; y: number }
@@ -46,6 +71,11 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
   const [size, setSize] = useState({ w: 0, h: 0 })
   // Zoom + tịnh tiến (px) của lớp canvas chứa ảnh + svg.
   const [view, setView] = useState<View>({ zoom: 1, x: 0, y: 0 })
+  // Đang gọi model dò lại vùng (double-click) — khoá thao tác, hiện spinner.
+  const [detecting, setDetecting] = useState(false)
+  // Thông báo ngắn ("Đã thêm N box", …) tự ẩn sau vài giây.
+  const [notice, setNotice] = useState<string | null>(null)
+  const noticeTimer = useRef<number | null>(null)
 
   const imgRef = useRef<HTMLImageElement>(null)
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -134,6 +164,104 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
     const x = (clientX - r.left) / r.width
     const y = (clientY - r.top) / r.height
     return { x: Math.min(1, Math.max(0, x)), y: Math.min(1, Math.max(0, y)) }
+  }
+
+  // Hiện thông báo ngắn, tự ẩn sau 2.5s.
+  const flash = (msg: string) => {
+    setNotice(msg)
+    if (noticeTimer.current) window.clearTimeout(noticeTimer.current)
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 2500)
+  }
+  useEffect(() => () => { if (noticeTimer.current) window.clearTimeout(noticeTimer.current) }, [])
+
+  // Double-click vào một điểm (chuẩn hoá) → cắt vùng quanh đó (kích thước suy
+  // từ box lân cận) và chạy lại model để bắt box bị bỏ sót, rồi gộp vào.
+  const detectRegion = async (cx: number, cy: number) => {
+    if (detecting) return
+    const el = imgRef.current
+    if (!el || !el.naturalWidth || !el.naturalHeight) return
+    if (boxes.length === 0) {
+      flash('Không có box lân cận để tham chiếu kích thước')
+      return
+    }
+    // 1) k box gần điểm click nhất → kích thước trung bình.
+    const near = boxes
+      .map((b) => ({ b, d: Math.hypot((b.x1 + b.x2) / 2 - cx, (b.y1 + b.y2) / 2 - cy) }))
+      .sort((p, q) => p.d - q.d)
+      .slice(0, NEIGHBORS_K)
+    const avgW = near.reduce((s, o) => s + (o.b.x2 - o.b.x1), 0) / near.length
+    const avgH = near.reduce((s, o) => s + (o.b.y2 - o.b.y1), 0) / near.length
+    // 2) khung crop tâm tại điểm click, kẹp trong ảnh.
+    const halfW = (avgW * CROP_MULTIPLIER) / 2
+    const halfH = (avgH * CROP_MULTIPLIER) / 2
+    const region = {
+      x1: Math.max(0, cx - halfW),
+      y1: Math.max(0, cy - halfH),
+      x2: Math.min(1, cx + halfW),
+      y2: Math.min(1, cy + halfH),
+    }
+    const rw = region.x2 - region.x1
+    const rh = region.y2 - region.y1
+    if (rw <= 0 || rh <= 0) return
+    // 3) cắt vùng từ ảnh ở độ phân giải gốc.
+    const nw = el.naturalWidth
+    const nh = el.naturalHeight
+    const sx = Math.round(region.x1 * nw)
+    const sy = Math.round(region.y1 * nh)
+    const sw = Math.max(1, Math.round(rw * nw))
+    const sh = Math.max(1, Math.round(rh * nh))
+    const canvas = document.createElement('canvas')
+    canvas.width = sw
+    canvas.height = sh
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.drawImage(el, sx, sy, sw, sh, 0, 0, sw, sh)
+    let blob: Blob | null
+    try {
+      // toBlob ném SecurityError đồng bộ nếu canvas bị "taint" (ảnh khác nguồn
+      // không có CORS) — bắt để báo lỗi thay vì crash.
+      blob = await new Promise<Blob | null>((resolve, reject) => {
+        try {
+          canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.95)
+        } catch (err) {
+          reject(err)
+        }
+      })
+    } catch {
+      flash('Không thể cắt vùng (ảnh khác nguồn, thiếu CORS)')
+      return
+    }
+    if (!blob) return
+    // 4) gửi crop lên model, ánh xạ box về ảnh đầy đủ, gộp box mới.
+    setDetecting(true)
+    try {
+      const file = new File([blob], 'region.jpg', { type: 'image/jpeg' })
+      const res = await countBoxes([file])
+      const detected = res.per_image?.[0]?.boxes ?? []
+      const mapped: DetBox[] = detected.map((d) => ({
+        x1: region.x1 + d.x1 * rw,
+        y1: region.y1 + d.y1 * rh,
+        x2: region.x1 + d.x2 * rw,
+        y2: region.y1 + d.y2 * rh,
+        conf: d.conf,
+      }))
+      const fresh = mapped.filter(
+        (m) =>
+          m.x2 - m.x1 >= MIN_SIDE &&
+          m.y2 - m.y1 >= MIN_SIDE &&
+          boxes.every((b) => iou(m, b) < DEDUP_IOU),
+      )
+      if (fresh.length) {
+        setBoxes((prev) => [...prev, ...fresh])
+        flash(`Đã thêm ${fresh.length} box`)
+      } else {
+        flash('Không tìm thấy box mới')
+      }
+    } catch {
+      flash('Lỗi khi dò lại vùng')
+    } finally {
+      setDetecting(false)
+    }
   }
 
   const onBgPointerDown = (e: React.PointerEvent) => {
@@ -281,7 +409,7 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
           <span className="modal-icon">🔲</span>
           <div>
             <h2>Kiểm tra & chỉnh box</h2>
-            <p className="modal-subtitle">Ảnh {index + 1}/{total} · {subtitle}</p>
+            <p className="modal-subtitle">Ảnh {index + 1}/{total} · {subtitle} · 💡 nhấp đúp vào chỗ trống để dò lại box</p>
             <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button type="button" className={`btn btn-sm ${mode === 'draw' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => switchMode('draw')}>
                 ✏️ Vẽ box
@@ -343,8 +471,20 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
               onPointerMove={onPointerMove}
               onPointerUp={onPointerUp}
             >
-              {/* Lớp nền bắt thao tác vẽ box / kéo ảnh / bỏ chọn. */}
-              <rect x={0} y={0} width={size.w} height={size.h} fill="transparent" onPointerDown={onBgPointerDown} />
+              {/* Lớp nền bắt thao tác vẽ box / kéo ảnh / bỏ chọn.
+                  Nhấp đúp → dò lại box quanh điểm đó bằng model. */}
+              <rect
+                x={0}
+                y={0}
+                width={size.w}
+                height={size.h}
+                fill="transparent"
+                onPointerDown={onBgPointerDown}
+                onDoubleClick={(e) => {
+                  const p = toNorm(e.clientX, e.clientY)
+                  detectRegion(p.x, p.y)
+                }}
+              />
               {boxes.map((b, i) => {
                 const r = px(b)
                 const isSel = i === selected
@@ -415,6 +555,24 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
               })()}
             </svg>
           </div>
+          {/* Overlay khoá thao tác khi đang dò lại vùng (không scale theo zoom). */}
+          {detecting && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(0,0,0,0.25)',
+                zIndex: 5,
+              }}
+            >
+              <div style={{ background: '#fff', padding: '0.5rem 0.9rem', borderRadius: 8, fontSize: '0.85rem', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                ⏳ Đang dò lại vùng…
+              </div>
+            </div>
+          )}
         </div>
 
         <div
@@ -429,6 +587,11 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
         >
           <strong style={{ fontSize: '1rem' }}>
             Số box: <span style={{ color: 'var(--primary, #2563eb)' }}>{boxes.length}</span>
+            {notice && (
+              <span style={{ marginLeft: '0.6rem', fontSize: '0.85rem', fontWeight: 400, color: 'var(--gray-500)' }}>
+                {notice}
+              </span>
+            )}
           </strong>
           {selected !== null && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={removeSelected}>
