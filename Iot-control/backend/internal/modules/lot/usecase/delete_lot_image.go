@@ -24,7 +24,7 @@ func (uc *lotUseCase) DeleteImage(ctx context.Context, lotID, imageID int64) err
 	if err := uc.storage.Remove(ctx, img.ObjectKey); err != nil {
 		uc.logger.Warnf("không xóa được object %q khỏi kho lưu trữ: %v", img.ObjectKey, err)
 	}
-	// Xóa luôn cặp ảnh + nhãn dataset gắn với ảnh (nếu có); bỏ qua nếu không tồn tại.
-	uc.removeDataset(ctx, img.ObjectKey)
+	// Xóa luôn file nhãn dataset cùng tên (ảnh chính là object vừa xoá ở trên).
+	uc.removeDatasetLabel(ctx, img.ObjectKey)
 	return nil
 }

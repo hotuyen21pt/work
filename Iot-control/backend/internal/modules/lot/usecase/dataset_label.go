@@ -18,13 +18,11 @@ type boxAnno struct {
 	Y2 float64 `json:"y2"`
 }
 
-// datasetKeys suy ra key ảnh & nhãn trong folder dataset từ object_key của ảnh
-// upload (nằm ở folder lots). Ảnh dataset là bản sao cùng tên, nhãn cùng tên .txt:
-//   lots/<lotId>/<name>.<ext>  ->  dataset/<name>.<ext> , dataset/<name>.txt
-func datasetKeys(objectKey string) (imageKey, labelKey string) {
-	base := path.Base(objectKey)                     // <name>.<ext>
-	stem := strings.TrimSuffix(base, path.Ext(base)) // <name>
-	return "dataset/" + base, "dataset/" + stem + ".txt"
+// datasetLabelKey suy ra key file nhãn từ object_key của ảnh. Ảnh lưu thẳng ở
+// folder dataset nên nhãn dùng CÙNG tên, chỉ đổi đuôi .txt:
+//   dataset/<name>.<ext>  ->  dataset/<name>.txt
+func datasetLabelKey(objectKey string) string {
+	return strings.TrimSuffix(objectKey, path.Ext(objectKey)) + ".txt"
 }
 
 // datasetTZ là múi giờ Việt Nam để số thứ tự tính theo đúng ngày địa phương.
@@ -77,31 +75,24 @@ func boxesToYOLO(boxes []boxAnno) string {
 	return strings.Join(lines, "\n")
 }
 
-// saveDataset lưu một mẫu dữ liệu huấn luyện vào folder dataset: sao chép ảnh
-// (từ folder lots) sang dataset/ và ghi file nhãn YOLO cùng tên.
-func (uc *lotUseCase) saveDataset(ctx context.Context, objectKey string, boxesJSON []byte) error {
+// writeDatasetLabel ghi file nhãn YOLO cho ảnh (ảnh đã nằm sẵn ở dataset/ nên
+// chỉ cần ghi nhãn cùng tên). Nhãn rỗng vẫn ghi (ảnh không có box hợp lệ YOLO).
+func (uc *lotUseCase) writeDatasetLabel(ctx context.Context, objectKey string, boxesJSON []byte) error {
 	var boxes []boxAnno
 	if len(boxesJSON) > 0 {
 		if err := json.Unmarshal(boxesJSON, &boxes); err != nil {
 			return fmt.Errorf("nhãn box không hợp lệ: %w", err)
 		}
 	}
-	imageKey, labelKey := datasetKeys(objectKey)
-	// Sao chép ảnh sang dataset/ (server-side, không tải về).
-	if err := uc.storage.Copy(ctx, objectKey, imageKey); err != nil {
-		return err
-	}
+	labelKey := datasetLabelKey(objectKey)
 	content := []byte(boxesToYOLO(boxes))
 	_, err := uc.storage.Upload(ctx, labelKey, bytes.NewReader(content), int64(len(content)), "text/plain")
 	return err
 }
 
-// removeDataset xoá cặp ảnh + nhãn dataset gắn với ảnh lô; lỗi chỉ cảnh báo.
-func (uc *lotUseCase) removeDataset(ctx context.Context, objectKey string) {
-	imageKey, labelKey := datasetKeys(objectKey)
-	if err := uc.storage.Remove(ctx, imageKey); err != nil {
-		uc.logger.Warnf("không xóa được ảnh dataset %q: %v", imageKey, err)
-	}
+// removeDatasetLabel xoá file nhãn dataset gắn với ảnh; lỗi chỉ cảnh báo.
+func (uc *lotUseCase) removeDatasetLabel(ctx context.Context, objectKey string) {
+	labelKey := datasetLabelKey(objectKey)
 	if err := uc.storage.Remove(ctx, labelKey); err != nil {
 		uc.logger.Warnf("không xóa được nhãn dataset %q: %v", labelKey, err)
 	}

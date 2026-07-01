@@ -24,13 +24,10 @@ func (uc *lotUseCase) UpdateImageBoxes(ctx context.Context, lotID, imageID int64
 		return err
 	}
 
-	// Dataset (ảnh + nhãn) chỉ lưu cho ảnh chỉnh tay; còn lại xoá nếu trước đó có.
-	if edited && len(boxesJSON) > 0 {
-		if err := uc.saveDataset(ctx, img.ObjectKey, boxesJSON); err != nil {
-			uc.logger.Warnf("không lưu được dataset cho %q: %v", img.ObjectKey, err)
-		}
-	} else {
-		uc.removeDataset(ctx, img.ObjectKey)
+	// Luôn cập nhật nhãn dataset theo box mới (mọi ảnh đều có nhãn).
+	_ = edited
+	if err := uc.writeDatasetLabel(ctx, img.ObjectKey, boxesJSON); err != nil {
+		uc.logger.Warnf("không ghi được nhãn dataset cho %q: %v", img.ObjectKey, err)
 	}
 	return nil
 }

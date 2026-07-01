@@ -10,6 +10,7 @@ import {
 } from '../api/client'
 import type { Lot, LotImage, DetBox } from '../types'
 import BoxReviewModal from './BoxReviewModal'
+import CameraCaptureModal from './CameraCaptureModal'
 
 // So sánh 2 danh sách box (chuẩn hoá 0..1) để biết người dùng có chỉnh tay không.
 // So khớp theo thứ tự với sai số nhỏ; khác số lượng box coi như đã sửa.
@@ -68,8 +69,9 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
   const [serverEdits, setServerEdits] = useState<
     Record<number, { boxes: DetBox[]; edited: boolean }>
   >({})
+  // Mở camera điện thoại (chụp trực tiếp trong app) thay cho input camera HĐH.
+  const [showCamera, setShowCamera] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
 
   // Giải phóng các object URL còn lại khi đóng modal (cả ảnh pending lẫn hàng đợi
   // review chưa xử lý xong). Revoke trùng là vô hại (no-op).
@@ -94,17 +96,13 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
 
   const resetInputs = () => {
     if (fileInputRef.current) fileInputRef.current.value = ''
-    if (cameraInputRef.current) cameraInputRef.current.value = ''
   }
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    if (files.length === 0) {
-      resetInputs()
-      return
-    }
+  // Nhận diện box cho danh sách ảnh rồi mở hàng đợi xem lại (dùng chung cho
+  // nút Tải ảnh lẫn chụp bằng camera điện thoại).
+  const processFiles = async (files: File[]) => {
+    if (files.length === 0) return
     setImgError('')
-    resetInputs()
 
     // Đếm/phát hiện box, rồi mở hàng đợi xem lại để người dùng chỉnh tay.
     setCounting(true)
@@ -129,6 +127,12 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
         url: URL.createObjectURL(f),
       })),
     )
+  }
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    resetInputs()
+    void processFiles(files)
   }
 
   type ReviewResult = { file: File; count: number; boxes: DetBox[]; edited: boolean; url: string }
@@ -469,7 +473,7 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => setShowCamera(true)}
                 disabled={uploading || counting}
               >
                 📷 Chụp hình
@@ -484,15 +488,6 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
               </button>
             </div>
 
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleUpload}
-              disabled={uploading}
-              style={{ display: 'none' }}
-            />
             <input
               ref={fileInputRef}
               type="file"
@@ -565,6 +560,16 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
         </form>
       </div>
     </div>
+
+    {showCamera && (
+      <CameraCaptureModal
+        onCapture={(file) => {
+          setShowCamera(false)
+          void processFiles([file])
+        }}
+        onClose={() => setShowCamera(false)}
+      />
+    )}
 
     {reviewing && (
       <BoxReviewModal

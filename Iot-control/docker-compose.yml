@@ -46,7 +46,7 @@ services:
       - ./box-counter-service/model:/app/model:ro
     environment:
       MODEL_PATH: /app/model/best.pt
-      CONF_THRESHOLD: "0.5"
+      CONF_THRESHOLD: "0.4"
       # Kích thước ảnh suy luận — 960 cân bằng độ chính xác/RAM (1280 dễ OOM).
       IMGSZ: "960"
       # IoU cho NMS — 0.7 (default YOLO) giữ được box xếp sát nhau.

@@ -74,15 +74,15 @@ func (uc *lotUseCase) uploadOne(ctx context.Context, lotID int64, fh *multipart.
 	}
 	defer file.Close()
 
-	// Ảnh upload lưu ở folder lots; tên đồng bộ <YYYYMMDD><stt> để khi đưa vào
-	// dataset thì ảnh (bản sao) & nhãn dùng chung tên.
+	// Mọi ảnh upload lưu thẳng vào folder dataset; tên đồng bộ <YYYYMMDD><stt>
+	// để ảnh & nhãn dùng chung tên.
 	day := datasetDay()
 	seq, err := uc.lotRepo.NextDatasetSeq(day)
 	if err != nil {
 		return nil, httperrors.NewInternal("không tạo được số thứ tự ảnh")
 	}
 	ext := strings.ToLower(filepath.Ext(fh.Filename))
-	objectKey := fmt.Sprintf("lots/%d/%s%s", lotID, datasetName(day, seq), ext)
+	objectKey := fmt.Sprintf("dataset/%s%s", datasetName(day, seq), ext)
 
 	url, err := uc.storage.Upload(ctx, objectKey, file, fh.Size, contentType)
 	if err != nil {
@@ -107,11 +107,10 @@ func (uc *lotUseCase) uploadOne(ctx context.Context, lotID int64, fh *multipart.
 		}
 		return nil, err
 	}
-	// Ảnh được chỉnh tay thì lưu vào dataset (ảnh + nhãn); lỗi chỉ cảnh báo.
-	if edited && len(boxJSON) > 0 {
-		if err := uc.saveDataset(ctx, objectKey, boxJSON); err != nil {
-			uc.logger.Warnf("không lưu được dataset cho %q: %v", objectKey, err)
-		}
+	// Mọi ảnh đều ghi nhãn dataset (dù có chỉnh tay hay không); lỗi chỉ cảnh báo.
+	_ = edited
+	if err := uc.writeDatasetLabel(ctx, objectKey, boxJSON); err != nil {
+		uc.logger.Warnf("không ghi được nhãn dataset cho %q: %v", objectKey, err)
 	}
 	return img, nil
 }
