@@ -39,6 +39,8 @@ export interface LotImage {
   lot_id: number
   url: string
   count: number
+  // Box đã lưu của ảnh (chuẩn hoá 0..1) để mở lại chỉnh nhãn; null nếu chưa có.
+  boxes?: DetBox[] | null
   created_at: string
 }
 

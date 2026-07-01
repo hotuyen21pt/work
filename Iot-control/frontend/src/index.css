@@ -5,37 +5,37 @@
 }
 
 :root {
-  /* Tông chủ đạo: xanh lá ngọc (emerald) — thanh lịch, không chói. */
-  --primary: #059669;
-  --primary-hover: #047857;
-  --primary-light: #ecfdf5;
-  --primary-soft: #d1fae5;
+  /* Tông chủ đạo: đen/xám trung tính (slate) — tối giản, hiện đại. */
+  --primary: #1f2937;
+  --primary-hover: #111827;
+  --primary-light: #f3f4f6;
+  --primary-soft: #e5e7eb;
   /* Gradient thương hiệu — dùng cho brand, nút chính, accent. */
-  --grad-primary: linear-gradient(135deg, #047857 0%, #10b981 100%);
+  --grad-primary: linear-gradient(135deg, #111827 0%, #374151 100%);
   --danger: #ef4444;
   --danger-hover: #dc2626;
   --success: #16a34a;
   --warning: #d97706;
-  --gray-50: #f7faf9;
-  --gray-100: #eef3f1;
-  --gray-200: #e2eae7;
-  --gray-300: #d2ddd8;
-  --gray-400: #9aa8a2;
-  --gray-500: #64746d;
-  --gray-700: #324840;
-  --gray-900: #0f211b;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-700: #374151;
+  --gray-900: #111827;
   --white: #ffffff;
   --radius: 10px;
   --radius-lg: 16px;
   /* Đường cong chuyển động: mượt, giảm tốc tự nhiên ở cuối. */
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  /* Bóng đổ mềm, hơi ngả xanh lá để hợp tông thương hiệu. */
-  --shadow-sm: 0 1px 2px 0 rgb(6 78 59 / 0.05);
-  --shadow: 0 1px 3px 0 rgb(6 78 59 / 0.08), 0 1px 2px -1px rgb(6 78 59 / 0.05);
-  --shadow-md: 0 6px 16px -4px rgb(6 78 59 / 0.1), 0 2px 6px -2px rgb(6 78 59 / 0.06);
-  --shadow-lg: 0 18px 40px -12px rgb(6 78 59 / 0.18), 0 6px 14px -6px rgb(6 78 59 / 0.1);
-  --ring: 0 0 0 3px rgb(16 185 129 / 0.18);
+  /* Bóng đổ mềm, trung tính (ngả xám đen) hợp tông thương hiệu. */
+  --shadow-sm: 0 1px 2px 0 rgb(17 24 39 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(17 24 39 / 0.08), 0 1px 2px -1px rgb(17 24 39 / 0.05);
+  --shadow-md: 0 6px 16px -4px rgb(17 24 39 / 0.1), 0 2px 6px -2px rgb(17 24 39 / 0.06);
+  --shadow-lg: 0 18px 40px -12px rgb(17 24 39 / 0.18), 0 6px 14px -6px rgb(17 24 39 / 0.1);
+  --ring: 0 0 0 3px rgb(31 41 55 / 0.18);
 
   /* ─── Glassmorphism: bề mặt kính mờ, viền sáng, bóng có chiều sâu ─── */
   --glass-bg: rgba(255, 255, 255, 0.62);          /* kính thường (card, header) */
@@ -43,19 +43,19 @@
   --glass-bg-subtle: rgba(255, 255, 255, 0.45);   /* kính nhạt (input, nút phụ) */
   --glass-border: rgba(255, 255, 255, 0.65);      /* viền sáng mô phỏng mép kính */
   --glass-blur: blur(18px) saturate(180%);
-  --glass-shadow: 0 10px 34px -10px rgb(6 78 59 / 0.20), 0 3px 10px -4px rgb(6 78 59 / 0.12);
-  --glass-shadow-lg: 0 24px 60px -16px rgb(6 78 59 / 0.28), 0 8px 20px -8px rgb(6 78 59 / 0.16);
+  --glass-shadow: 0 10px 34px -10px rgb(17 24 39 / 0.20), 0 3px 10px -4px rgb(17 24 39 / 0.12);
+  --glass-shadow-lg: 0 24px 60px -16px rgb(17 24 39 / 0.28), 0 8px 20px -8px rgb(17 24 39 / 0.16);
 }
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-  /* Nền môi trường: hai vầng sáng emerald/teal mờ + gradient nền — tạo màu sắc
+  /* Nền môi trường: hai vầng sáng xám trung tính mờ + gradient nền — tạo màu sắc
      cho lớp kính mờ phía trên "khúc xạ", cho cảm giác chiều sâu hiện đại. */
   background:
-    radial-gradient(900px 620px at 10% -8%, rgba(16, 185, 129, 0.16), transparent 60%),
-    radial-gradient(820px 600px at 112% 8%, rgba(45, 212, 191, 0.14), transparent 55%),
-    radial-gradient(700px 700px at 50% 120%, rgba(5, 150, 105, 0.10), transparent 60%),
-    linear-gradient(180deg, #f3f8f7 0%, #e9f1ef 100%);
+    radial-gradient(900px 620px at 10% -8%, rgba(100, 116, 139, 0.16), transparent 60%),
+    radial-gradient(820px 600px at 112% 8%, rgba(148, 163, 184, 0.14), transparent 55%),
+    radial-gradient(700px 700px at 50% 120%, rgba(71, 85, 105, 0.10), transparent 60%),
+    linear-gradient(180deg, #f4f5f7 0%, #e8eaee 100%);
   background-attachment: fixed;
   color: var(--gray-900);
   font-size: 14px;
@@ -338,10 +338,10 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Lớp 1: điểm sáng dịu phía trên trái. Lớp 2: gradient emerald sâu, có chiều. */
+  /* Lớp 1: điểm sáng dịu phía trên trái. Lớp 2: gradient xám đen sâu, có chiều. */
   background:
-    radial-gradient(120% 120% at 15% 10%, rgba(110, 231, 183, 0.55) 0%, transparent 45%),
-    linear-gradient(150deg, #022c22 0%, #065f46 42%, #059669 75%, #10b981 100%);
+    radial-gradient(120% 120% at 15% 10%, rgba(203, 213, 225, 0.45) 0%, transparent 45%),
+    linear-gradient(150deg, #0b0f14 0%, #1f2937 42%, #374151 75%, #4b5563 100%);
   padding: 1rem;
   position: relative;
   overflow: hidden;
@@ -357,13 +357,13 @@ body {
 }
 .login-page::before {
   width: 420px; height: 420px;
-  background: #34d399;
-  opacity: 0.45;
+  background: #94a3b8;
+  opacity: 0.40;
   top: -140px; right: -120px;
 }
 .login-page::after {
   width: 460px; height: 460px;
-  background: #047857;
+  background: #374151;
   opacity: 0.55;
   bottom: -180px; left: -140px;
 }
@@ -376,7 +376,7 @@ body {
   backdrop-filter: blur(26px) saturate(180%);
   border: 1px solid rgb(255 255 255 / 0.55);
   border-radius: var(--radius-lg);
-  box-shadow: 0 30px 60px -15px rgb(2 44 34 / 0.5), 0 10px 24px -8px rgb(2 44 34 / 0.35);
+  box-shadow: 0 30px 60px -15px rgb(15 23 42 / 0.5), 0 10px 24px -8px rgb(15 23 42 / 0.35);
   padding: 2.75rem 2rem;
   width: 100%;
   max-width: 420px;
@@ -397,11 +397,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Khối logo nổi với gradient emerald + viền sáng + bóng đổ màu. */
+  /* Khối logo nổi với gradient xám đen + viền sáng + bóng đổ màu. */
   background: var(--grad-primary);
   border-radius: 22px;
   margin-bottom: 0.95rem;
-  box-shadow: 0 10px 22px -6px rgb(16 185 129 / 0.55);
+  box-shadow: 0 10px 22px -6px rgb(17 24 39 / 0.55);
 }
 
 .login-logo h1 {
@@ -1391,33 +1391,33 @@ body {
    tự đổi theo mà không phải sửa từng selector.
    ═══════════════════════════════════════════════════════════ */
 [data-theme='dark'] {
-  --primary: #10b981;
-  --primary-hover: #34d399;
-  --primary-light: #0f2a22;
-  --primary-soft: #134e3a;
-  --grad-primary: linear-gradient(135deg, #059669 0%, #34d399 100%);
+  --primary: #cbd5e1;
+  --primary-hover: #e2e8f0;
+  --primary-light: #1f2937;
+  --primary-soft: #334155;
+  --grad-primary: linear-gradient(135deg, #475569 0%, #94a3b8 100%);
 
-  --gray-50: #0b1714;
-  --gray-100: #15241f;
-  --gray-200: #25382f;
-  --gray-300: #3a5046;
-  --gray-400: #7e948b;
-  --gray-500: #9bb0a7;
-  --gray-700: #cbe0d7;
-  --gray-900: #effaf5;
-  --white: #14241e;
+  --gray-50: #0f1115;
+  --gray-100: #1a1d23;
+  --gray-200: #2a2e37;
+  --gray-300: #3f4550;
+  --gray-400: #8b919c;
+  --gray-500: #a8aeb8;
+  --gray-700: #d4d8de;
+  --gray-900: #f3f4f6;
+  --white: #16191f;
 
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.3);
   --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 18px 40px -12px rgb(0 0 0 / 0.65), 0 6px 14px -6px rgb(0 0 0 / 0.5);
-  --ring: 0 0 0 3px rgb(16 185 129 / 0.3);
+  --ring: 0 0 0 3px rgb(148 163 184 / 0.3);
 
-  /* Kính mờ phiên bản tối: nền tối trong suốt, viền sáng nhẹ ngả xanh. */
-  --glass-bg: rgba(22, 38, 32, 0.55);
-  --glass-bg-strong: rgba(20, 35, 29, 0.82);
-  --glass-bg-subtle: rgba(30, 48, 41, 0.40);
-  --glass-border: rgba(120, 165, 148, 0.22);
+  /* Kính mờ phiên bản tối: nền tối trong suốt, viền sáng nhẹ trung tính. */
+  --glass-bg: rgba(30, 34, 42, 0.55);
+  --glass-bg-strong: rgba(26, 29, 35, 0.82);
+  --glass-bg-subtle: rgba(40, 44, 52, 0.40);
+  --glass-border: rgba(148, 163, 184, 0.22);
   --glass-shadow: 0 10px 34px -10px rgb(0 0 0 / 0.55), 0 3px 10px -4px rgb(0 0 0 / 0.4);
   --glass-shadow-lg: 0 24px 60px -16px rgb(0 0 0 / 0.7), 0 8px 20px -8px rgb(0 0 0 / 0.5);
 }
@@ -1425,10 +1425,10 @@ body {
 /* Các nền dùng màu cố định (không qua biến) cần override riêng cho dark. */
 [data-theme='dark'] body {
   background:
-    radial-gradient(900px 620px at 10% -8%, rgba(16, 185, 129, 0.14), transparent 60%),
-    radial-gradient(820px 600px at 112% 8%, rgba(13, 148, 136, 0.12), transparent 55%),
-    radial-gradient(700px 700px at 50% 120%, rgba(5, 150, 105, 0.10), transparent 60%),
-    linear-gradient(180deg, #07120f 0%, #0b1714 100%);
+    radial-gradient(900px 620px at 10% -8%, rgba(148, 163, 184, 0.12), transparent 60%),
+    radial-gradient(820px 600px at 112% 8%, rgba(100, 116, 139, 0.10), transparent 55%),
+    radial-gradient(700px 700px at 50% 120%, rgba(71, 85, 105, 0.10), transparent 60%),
+    linear-gradient(180deg, #0a0c10 0%, #12151b 100%);
   background-attachment: fixed;
 }
 /* Header tối dùng chung biến glass (đã định nghĩa lại ở trên). */

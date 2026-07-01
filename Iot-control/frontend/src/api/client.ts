@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { User, SKU, Lot, LotImage, BoxCountResult } from '../types'
+import type { User, SKU, Lot, LotImage, BoxCountResult, DetBox } from '../types'
 
 // Khi build cho Render: đặt VITE_API_BASE_URL = https://<backend>.onrender.com/api
 // Khi dev local: bỏ trống -> dùng '/api' (vite proxy sang localhost:8080).
@@ -70,12 +70,23 @@ export const deleteLot = (id: number) =>
 export const listLotImages = (lotId: number) =>
   api.get<LotImage[]>(`/lots/${lotId}/images`).then((r) => r.data)
 
-export const uploadLotImages = (lotId: number, files: File[], counts?: number[]) => {
+// Mỗi ảnh khi upload kèm: số box (count), box chuẩn hoá (boxes) để lưu vào DB,
+// và cờ edited (người dùng có chỉnh tay không) để backend ghi nhãn dataset.
+export interface LotImageUpload {
+  file: File
+  count: number
+  boxes: DetBox[]
+  edited: boolean
+}
+
+export const uploadLotImages = (lotId: number, items: LotImageUpload[]) => {
   const form = new FormData()
-  files.forEach((f, i) => {
-    form.append('files', f)
-    // counts đi song song với files theo thứ tự để backend lưu số box từng ảnh.
-    form.append('counts', String(counts?.[i] ?? 0))
+  items.forEach((it) => {
+    // files/counts/boxes/edited đi song song theo thứ tự để backend ghép cặp.
+    form.append('files', it.file)
+    form.append('counts', String(it.count ?? 0))
+    form.append('boxes', JSON.stringify(it.boxes ?? []))
+    form.append('edited', it.edited ? 'true' : 'false')
   })
   return api
     .post<LotImage[]>(`/lots/${lotId}/images`, form, {
@@ -83,6 +94,17 @@ export const uploadLotImages = (lotId: number, files: File[], counts?: number[])
     })
     .then((r) => r.data)
 }
+
+// Cập nhật box của một ảnh đã lưu (mở lại chỉnh tay). edited=true thì ghi nhãn dataset.
+export const updateImageBoxes = (
+  lotId: number,
+  imageId: number,
+  boxes: DetBox[],
+  edited: boolean,
+) =>
+  api
+    .put(`/lots/${lotId}/images/${imageId}/boxes`, { boxes, edited })
+    .then((r) => r.data)
 
 export const deleteLotImage = (lotId: number, imageId: number) =>
   api.delete(`/lots/${lotId}/images/${imageId}`)
@@ -95,26 +117,6 @@ export const countBoxes = (files: File[]) => {
     .post<BoxCountResult>('/lots/count-boxes', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    .then((r) => r.data)
-}
-
-// Lưu ảnh gốc + nhãn box (định dạng YOLO) làm dữ liệu huấn luyện.
-// boxes là toạ độ chuẩn hoá 0..1; mỗi dòng nhãn: "0 xc yc w h".
-export const saveDataset = (file: File, boxes: { x1: number; y1: number; x2: number; y2: number }[]) => {
-  const labels = boxes
-    .map((b) => {
-      const xc = (b.x1 + b.x2) / 2
-      const yc = (b.y1 + b.y2) / 2
-      const w = Math.abs(b.x2 - b.x1)
-      const h = Math.abs(b.y2 - b.y1)
-      return `0 ${xc.toFixed(6)} ${yc.toFixed(6)} ${w.toFixed(6)} ${h.toFixed(6)}`
-    })
-    .join('\n')
-  const form = new FormData()
-  form.append('image', file)
-  form.append('labels', labels)
-  return api
-    .post('/lots/dataset', form, { headers: { 'Content-Type': 'multipart/form-data' } })
     .then((r) => r.data)
 }
 

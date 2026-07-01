@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { DetBox } from '../types'
 
 interface Props {
-  file: File
+  src: string // URL ảnh để hiển thị (object URL của file mới hoặc URL ảnh server)
   initialBoxes: DetBox[]
   index: number // vị trí ảnh trong hàng đợi (0-based)
   total: number // tổng số ảnh đang review
@@ -22,20 +22,21 @@ const normalize = (b: DetBox): DetBox => ({
 // Box vẽ nhỏ hơn ngưỡng này (theo cạnh chuẩn hoá) bị bỏ qua — chống chạm nhầm.
 const MIN_SIDE = 0.01
 
-export default function BoxReviewModal({ file, initialBoxes, index, total, onConfirm, onCancel }: Props) {
+export default function BoxReviewModal({ src, initialBoxes, index, total, onConfirm, onCancel }: Props) {
   const [boxes, setBoxes] = useState<DetBox[]>(() => initialBoxes.map(normalize))
   const [selected, setSelected] = useState<number | null>(null)
   const [draft, setDraft] = useState<DetBox | null>(null)
+  // Chế độ thao tác: 'draw' = kéo để vẽ box mới (bắt đầu ở bất kỳ đâu, kể cả bên
+  // trong box khác); 'move' = bấm/kéo box để chọn & di chuyển.
+  const [mode, setMode] = useState<'draw' | 'move'>('draw')
   // Kích thước ảnh hiển thị thực (px) để quy đổi toạ độ chuẩn hoá ↔ pixel.
   const [size, setSize] = useState({ w: 0, h: 0 })
-
-  const url = useRef<string>('')
-  if (!url.current) url.current = URL.createObjectURL(file)
-  useEffect(() => () => URL.revokeObjectURL(url.current), [])
 
   const imgRef = useRef<HTMLImageElement>(null)
   const drawingRef = useRef(false)
   const startRef = useRef({ x: 0, y: 0 })
+  // Trạng thái kéo di chuyển một box đã có: vị trí con trỏ lúc bấm + box gốc.
+  const dragRef = useRef<{ index: number; startX: number; startY: number; orig: DetBox } | null>(null)
 
   // Tính kích thước hiển thị: phóng ảnh vừa khít khung (92% rộng × 80% cao
   // màn hình), giữ đúng tỉ lệ. Cho phép phóng TO ảnh nhỏ để dễ vẽ box.
@@ -78,22 +79,51 @@ export default function BoxReviewModal({ file, initialBoxes, index, total, onCon
     setDraft({ x1: p.x, y1: p.y, x2: p.x, y2: p.y })
   }
 
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!drawingRef.current) return
+  // Bắt đầu kéo di chuyển một box đã có (bấm vào thân box).
+  const onBoxPointerDown = (i: number, e: React.PointerEvent) => {
+    e.stopPropagation()
+    setSelected(i)
+    ;(e.currentTarget as Element).setPointerCapture(e.pointerId)
     const p = toNorm(e.clientX, e.clientY)
-    setDraft({ x1: startRef.current.x, y1: startRef.current.y, x2: p.x, y2: p.y })
+    dragRef.current = { index: i, startX: p.x, startY: p.y, orig: boxes[i] }
+  }
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (drawingRef.current) {
+      const p = toNorm(e.clientX, e.clientY)
+      setDraft({ x1: startRef.current.x, y1: startRef.current.y, x2: p.x, y2: p.y })
+      return
+    }
+    const drag = dragRef.current
+    if (drag) {
+      const p = toNorm(e.clientX, e.clientY)
+      const w = drag.orig.x2 - drag.orig.x1
+      const h = drag.orig.y2 - drag.orig.y1
+      // Tịnh tiến theo delta con trỏ, kẹp trong ảnh và giữ nguyên kích thước box.
+      const clamp = (v: number, max: number) => Math.min(max, Math.max(0, v))
+      const nx1 = clamp(drag.orig.x1 + (p.x - drag.startX), 1 - w)
+      const ny1 = clamp(drag.orig.y1 + (p.y - drag.startY), 1 - h)
+      setBoxes((prev) =>
+        prev.map((b, idx) =>
+          idx === drag.index ? { x1: nx1, y1: ny1, x2: nx1 + w, y2: ny1 + h, conf: b.conf } : b,
+        ),
+      )
+    }
   }
 
   const onPointerUp = () => {
-    if (!drawingRef.current) return
-    drawingRef.current = false
-    if (draft) {
-      const b = normalize(draft)
-      if (b.x2 - b.x1 >= MIN_SIDE && b.y2 - b.y1 >= MIN_SIDE) {
-        setBoxes((prev) => [...prev, b])
+    if (drawingRef.current) {
+      drawingRef.current = false
+      if (draft) {
+        const b = normalize(draft)
+        if (b.x2 - b.x1 >= MIN_SIDE && b.y2 - b.y1 >= MIN_SIDE) {
+          setBoxes((prev) => [...prev, b])
+        }
       }
+      setDraft(null)
+      return
     }
-    setDraft(null)
+    dragRef.current = null
   }
 
   const removeSelected = () => {
@@ -118,8 +148,28 @@ export default function BoxReviewModal({ file, initialBoxes, index, total, onCon
           <div>
             <h2>Kiểm tra & chỉnh box</h2>
             <p className="modal-subtitle">
-              Ảnh {index + 1}/{total} · Kéo để vẽ thêm box · Bấm box để chọn rồi xoá
+              Ảnh {index + 1}/{total} ·{' '}
+              {mode === 'draw' ? 'Kéo để vẽ box mới (được phép bắt đầu bên trong box khác)' : 'Bấm box để chọn · kéo để di chuyển · xoá bằng nút ✕'}
             </p>
+            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem' }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${mode === 'draw' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => {
+                  setMode('draw')
+                  setSelected(null)
+                }}
+              >
+                ✏️ Vẽ box
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${mode === 'move' ? 'btn-primary' : 'btn-ghost'}`}
+                onClick={() => setMode('move')}
+              >
+                ✋ Chọn / di chuyển
+              </button>
+            </div>
           </div>
         </div>
 
@@ -136,7 +186,7 @@ export default function BoxReviewModal({ file, initialBoxes, index, total, onCon
         >
           <img
             ref={imgRef}
-            src={url.current}
+            src={src}
             alt="Ảnh kiểm đếm"
             onLoad={computeSize}
             width={size.w || undefined}
@@ -173,11 +223,10 @@ export default function BoxReviewModal({ file, initialBoxes, index, total, onCon
                   fill={isSel ? 'rgba(220,38,38,0.18)' : 'rgba(37,99,235,0.12)'}
                   stroke={isSel ? '#dc2626' : '#2563eb'}
                   strokeWidth={2}
-                  style={{ cursor: 'pointer' }}
-                  onPointerDown={(e) => {
-                    e.stopPropagation()
-                    setSelected(i)
-                  }}
+                  // Ở chế độ vẽ: box không bắt sự kiện để con trỏ "xuyên qua" xuống
+                  // lớp nền, cho phép bắt đầu vẽ box mới ngay bên trong box khác.
+                  style={{ cursor: 'move', pointerEvents: mode === 'move' ? 'auto' : 'none' }}
+                  onPointerDown={(e) => onBoxPointerDown(i, e)}
                 />
               )
             })}

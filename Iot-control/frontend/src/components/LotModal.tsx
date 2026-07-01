@@ -4,12 +4,20 @@ import {
   updateLot,
   listLotImages,
   uploadLotImages,
+  updateImageBoxes,
   deleteLotImage,
   countBoxes,
-  saveDataset,
 } from '../api/client'
 import type { Lot, LotImage, DetBox } from '../types'
 import BoxReviewModal from './BoxReviewModal'
+
+// So sánh 2 danh sách box (chuẩn hoá 0..1) để biết người dùng có chỉnh tay không.
+// So khớp theo thứ tự với sai số nhỏ; khác số lượng box coi như đã sửa.
+const boxesEqual = (a: DetBox[], b: DetBox[]): boolean => {
+  if (a.length !== b.length) return false
+  const eq = (x: number, y: number) => Math.abs(x - y) < 1e-4
+  return a.every((p, i) => eq(p.x1, b[i].x1) && eq(p.y1, b[i].y1) && eq(p.x2, b[i].x2) && eq(p.y2, b[i].y2))
+}
 
 interface Props {
   skuId: number
@@ -37,26 +45,45 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
 
   // Ảnh đã lưu trên server (chế độ sửa).
   const [images, setImages] = useState<LotImage[]>([])
-  // Ảnh chọn tạm khi tạo lô mới (chưa có lot.id) — sẽ upload sau khi tạo.
-  // count: số box đếm được trên ảnh, để khi bỏ ảnh thì trừ lại khỏi Số lượng.
-  const [pending, setPending] = useState<{ file: File; url: string; count: number }[]>([])
+  // Ảnh chọn tạm (cả tạo mới lẫn sửa) — chỉ upload khi bấm Lưu/Cập nhật.
+  // count: số box trên ảnh; boxes: toạ độ box; edited: người dùng có chỉnh tay không.
+  const [pending, setPending] = useState<
+    { file: File; url: string; count: number; boxes: DetBox[]; edited: boolean }[]
+  >([])
   const [uploading, setUploading] = useState(false)
   const [imgError, setImgError] = useState('')
   // Trạng thái đếm box tự động.
   const [counting, setCounting] = useState(false)
   const [countMsg, setCountMsg] = useState('')
-  // Hàng đợi xem lại & chỉnh box cho từng ảnh vừa upload.
-  const [reviewQueue, setReviewQueue] = useState<{ file: File; boxes: DetBox[] }[]>([])
+  // Hàng đợi xem lại & chỉnh box cho từng ảnh vừa chọn (url để hiển thị trong modal).
+  const [reviewQueue, setReviewQueue] = useState<{ file: File; boxes: DetBox[]; url: string }[]>([])
   const [reviewIndex, setReviewIndex] = useState(0)
-  // Kết quả đã xác nhận (ảnh + số box cuối cùng) tích luỹ qua hàng đợi.
-  const [reviewResults, setReviewResults] = useState<{ file: File; count: number }[]>([])
+  // Kết quả đã xác nhận tích luỹ qua hàng đợi.
+  const [reviewResults, setReviewResults] = useState<
+    { file: File; count: number; boxes: DetBox[]; edited: boolean; url: string }[]
+  >([])
+  // Ảnh đang mở lại để chỉnh nhãn: 'pending' theo index, 'server' theo id ảnh.
+  const [editing, setEditing] = useState<{ kind: 'pending' | 'server'; ref: number } | null>(null)
+  // Box đã sửa cho ảnh server (edit mode), flush lên server khi bấm Cập nhật.
+  const [serverEdits, setServerEdits] = useState<
+    Record<number, { boxes: DetBox[]; edited: boolean }>
+  >({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
 
-  // Giải phóng các object URL còn lại khi đóng modal.
+  // Giải phóng các object URL còn lại khi đóng modal (cả ảnh pending lẫn hàng đợi
+  // review chưa xử lý xong). Revoke trùng là vô hại (no-op).
   const pendingRef = useRef(pending)
   pendingRef.current = pending
-  useEffect(() => () => pendingRef.current.forEach((p) => URL.revokeObjectURL(p.url)), [])
+  const reviewQueueRef = useRef(reviewQueue)
+  reviewQueueRef.current = reviewQueue
+  useEffect(
+    () => () => {
+      pendingRef.current.forEach((p) => URL.revokeObjectURL(p.url))
+      reviewQueueRef.current.forEach((q) => URL.revokeObjectURL(q.url))
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!isEdit || !lot?.id) return
@@ -95,12 +122,20 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
     setCountMsg(`Đã phát hiện ${res.total} box — kiểm tra lại từng ảnh`)
     setReviewResults([])
     setReviewIndex(0)
-    setReviewQueue(files.map((f, i) => ({ file: f, boxes: res.per_image?.[i]?.boxes ?? [] })))
+    setReviewQueue(
+      files.map((f, i) => ({
+        file: f,
+        boxes: res.per_image?.[i]?.boxes ?? [],
+        url: URL.createObjectURL(f),
+      })),
+    )
   }
 
+  type ReviewResult = { file: File; count: number; boxes: DetBox[]; edited: boolean; url: string }
+
   // Sau khi review hết hàng đợi: cộng tổng vào Số lượng và đưa ảnh vào luồng
-  // pending (lô mới) hoặc upload ngay (lô đang sửa), với số box đã chỉnh tay.
-  const finalizeReview = async (results: { file: File; count: number }[]) => {
+  // pending. Chỉ upload thật (kèm nhãn dataset) khi bấm Lưu/Cập nhật.
+  const finalizeReview = (results: ReviewResult[]) => {
     if (results.length === 0) {
       setCountMsg('')
       return
@@ -108,35 +143,26 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
     const totalCount = results.reduce((s, r) => s + r.count, 0)
     setForm((prev) => ({ ...prev, qty: Number(prev.qty || 0) + totalCount }))
     setCountMsg(`Đã thêm: +${totalCount} box`)
-
-    const files = results.map((r) => r.file)
-    const counts = results.map((r) => r.count)
-    if (!isEdit || !lot?.id) {
-      setPending((prev) => [
-        ...prev,
-        ...files.map((f, i) => ({ file: f, url: URL.createObjectURL(f), count: counts[i] })),
-      ])
-    } else {
-      setUploading(true)
-      try {
-        const created = await uploadLotImages(lot.id, files, counts)
-        setImages((prev) => [...prev, ...created])
-      } catch (err: any) {
-        setImgError(err?.response?.data?.error || 'Tải ảnh thất bại')
-      } finally {
-        setUploading(false)
-      }
-    }
+    setPending((prev) => [
+      ...prev,
+      ...results.map((r) => ({
+        file: r.file,
+        url: r.url,
+        count: r.count,
+        boxes: r.boxes,
+        edited: r.edited,
+      })),
+    ])
   }
 
   // Chuyển sang ảnh tiếp theo trong hàng đợi, hoặc kết thúc.
-  const advanceReview = (results: { file: File; count: number }[]) => {
+  const advanceReview = (results: ReviewResult[]) => {
     const next = reviewIndex + 1
     if (next < reviewQueue.length) {
       setReviewResults(results)
       setReviewIndex(next)
     } else {
-      void finalizeReview(results)
+      finalizeReview(results)
       setReviewQueue([])
       setReviewIndex(0)
       setReviewResults([])
@@ -146,17 +172,49 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
   const handleReviewConfirm = (boxes: DetBox[], count: number) => {
     const item = reviewQueue[reviewIndex]
     if (item) {
-      // Lưu dataset (ảnh gốc + nhãn) — lỗi chỉ cảnh báo, không chặn luồng.
-      saveDataset(item.file, boxes).catch(() => setImgError('Lưu dataset thất bại (đã bỏ qua)'))
-      advanceReview([...reviewResults, { file: item.file, count }])
+      // edited=true nếu người dùng đã thêm/xoá/sửa box so với kết quả auto-detect.
+      const edited = !boxesEqual(boxes, item.boxes)
+      advanceReview([...reviewResults, { file: item.file, count, boxes, edited, url: item.url }])
     } else {
       advanceReview(reviewResults)
     }
   }
 
   const handleReviewCancel = () => {
-    // Bỏ qua ảnh hiện tại: không tính số lượng, không lưu dataset.
+    // Bỏ qua ảnh hiện tại: không tính số lượng, thu hồi object URL của ảnh bị bỏ.
+    const item = reviewQueue[reviewIndex]
+    if (item) URL.revokeObjectURL(item.url)
     advanceReview(reviewResults)
+  }
+
+  // Mở lại một ảnh pending để chỉnh nhãn.
+  const handleEditPendingConfirm = (index: number, boxes: DetBox[], count: number) => {
+    setPending((prev) => {
+      const old = prev[index]
+      if (!old) return prev
+      const delta = count - old.count
+      if (delta !== 0) setForm((f) => ({ ...f, qty: Math.max(0, Number(f.qty || 0) + delta) }))
+      const next = [...prev]
+      next[index] = { ...old, boxes, count, edited: old.edited || !boxesEqual(boxes, old.boxes) }
+      return next
+    })
+    setEditing(null)
+  }
+
+  // Mở lại một ảnh đã lưu trên server để chỉnh nhãn (flush khi bấm Cập nhật).
+  const handleEditServerConfirm = (imageId: number, boxes: DetBox[], count: number) => {
+    const img = images.find((i) => i.id === imageId)
+    if (!img) {
+      setEditing(null)
+      return
+    }
+    const delta = count - img.count
+    if (delta !== 0) setForm((f) => ({ ...f, qty: Math.max(0, Number(f.qty || 0) + delta) }))
+    // edited: khác với box gốc từ server thì tính là chỉnh tay (ghi nhãn dataset).
+    const edited = !boxesEqual(boxes, img.boxes ?? [])
+    setServerEdits((prev) => ({ ...prev, [imageId]: { boxes, edited } }))
+    setImages((prev) => prev.map((i) => (i.id === imageId ? { ...i, boxes, count } : i)))
+    setEditing(null)
   }
 
   const handleRemovePending = (index: number) => {
@@ -173,8 +231,16 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
     setImgError('')
     const target = images.find((img) => img.id === imageId)
     try {
+      // Backend xóa cả object ảnh lẫn file nhãn dataset gắn với ảnh.
       await deleteLotImage(lot.id, imageId)
       setImages((prev) => prev.filter((img) => img.id !== imageId))
+      // Bỏ luôn chỉnh sửa box đang chờ flush của ảnh này (nếu có).
+      setServerEdits((prev) => {
+        if (!(imageId in prev)) return prev
+        const next = { ...prev }
+        delete next[imageId]
+        return next
+      })
       // Xóa ảnh thì trừ lại số box của ảnh đó khỏi Số lượng.
       if (target) {
         setForm((f) => ({ ...f, qty: Math.max(0, Number(f.qty || 0) - (target.count || 0)) }))
@@ -196,6 +262,25 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
           qty: Number(form.qty),
           notes: form.notes,
         })
+        // Flush box đã chỉnh của ảnh server (ghi/xoá nhãn dataset ở backend).
+        for (const [idStr, e] of Object.entries(serverEdits)) {
+          try {
+            await updateImageBoxes(lot.id, Number(idStr), e.boxes, e.edited)
+          } catch {
+            setImgError('Cập nhật nhãn một số ảnh thất bại')
+          }
+        }
+        setServerEdits({})
+        // Upload các ảnh mới chọn tạm (kèm nhãn dataset cho ảnh chỉnh tay).
+        if (pending.length > 0) {
+          try {
+            await uploadLotImages(lot.id, pending)
+          } catch {
+            setImgError('Lô đã được lưu nhưng tải ảnh thất bại')
+          }
+          pending.forEach((p) => URL.revokeObjectURL(p.url))
+          setPending([])
+        }
       } else {
         const newLot = await upsertLot({
           sku_id: skuId,
@@ -206,10 +291,10 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
           branch: form.branch,
           notes: form.notes,
         })
-        // Upload các ảnh đã chọn tạm sau khi lô được tạo.
+        // Upload các ảnh đã chọn tạm sau khi lô được tạo (kèm nhãn dataset).
         if (pending.length > 0 && newLot?.id) {
           try {
-            await uploadLotImages(newLot.id, pending.map((p) => p.file), pending.map((p) => p.count))
+            await uploadLotImages(newLot.id, pending)
           } catch {
             setImgError('Lô đã được lưu nhưng tải ảnh thất bại')
           }
@@ -295,19 +380,20 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
             >
               {images.map((img) => (
                 <div key={img.id} style={{ position: 'relative' }}>
-                  <a href={img.url} target="_blank" rel="noreferrer">
-                    <img
-                      src={img.url}
-                      alt="Ảnh lô"
-                      style={{
-                        width: 120,
-                        height: 120,
-                        objectFit: 'cover',
-                        borderRadius: 8,
-                        border: '1px solid var(--gray-200, #ddd)',
-                      }}
-                    />
-                  </a>
+                  <img
+                    src={img.url}
+                    alt="Ảnh lô"
+                    title="Bấm để kiểm tra & chỉnh box"
+                    onClick={() => setEditing({ kind: 'server', ref: img.id })}
+                    style={{
+                      width: 120,
+                      height: 120,
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                      border: '1px solid var(--gray-200, #ddd)',
+                      cursor: 'pointer',
+                    }}
+                  />
                   <button
                     type="button"
                     onClick={() => handleDeleteImage(img.id)}
@@ -337,12 +423,15 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
                   <img
                     src={p.url}
                     alt="Ảnh chờ tải lên"
+                    title="Bấm để kiểm tra & chỉnh box"
+                    onClick={() => setEditing({ kind: 'pending', ref: index })}
                     style={{
                       width: 120,
                       height: 120,
                       objectFit: 'cover',
                       borderRadius: 8,
                       border: '1px dashed var(--primary, #2563eb)',
+                      cursor: 'pointer',
                     }}
                   />
                   <button
@@ -480,7 +569,7 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
     {reviewing && (
       <BoxReviewModal
         key={reviewIndex}
-        file={reviewQueue[reviewIndex].file}
+        src={reviewQueue[reviewIndex].url}
         initialBoxes={reviewQueue[reviewIndex].boxes}
         index={reviewIndex}
         total={reviewQueue.length}
@@ -488,6 +577,34 @@ export default function LotModal({ skuId, skuCode, skuName, lot, userBranch, onS
         onCancel={handleReviewCancel}
       />
     )}
+
+    {/* Mở lại một ảnh để chỉnh nhãn (ngoài luồng hàng đợi). */}
+    {!reviewing && editing?.kind === 'pending' && pending[editing.ref] && (
+      <BoxReviewModal
+        key={`pending-${editing.ref}`}
+        src={pending[editing.ref].url}
+        initialBoxes={pending[editing.ref].boxes}
+        index={0}
+        total={1}
+        onConfirm={(boxes, count) => handleEditPendingConfirm(editing.ref, boxes, count)}
+        onCancel={() => setEditing(null)}
+      />
+    )}
+    {!reviewing && editing?.kind === 'server' && (() => {
+      const img = images.find((i) => i.id === editing.ref)
+      if (!img) return null
+      return (
+        <BoxReviewModal
+          key={`server-${editing.ref}`}
+          src={img.url}
+          initialBoxes={img.boxes ?? []}
+          index={0}
+          total={1}
+          onConfirm={(boxes, count) => handleEditServerConfirm(editing.ref, boxes, count)}
+          onCancel={() => setEditing(null)}
+        />
+      )
+    })()}
     </>
   )
 }
