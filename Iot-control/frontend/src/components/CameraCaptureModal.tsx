@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { countBoxes } from '../api/client'
 import type { DetBox } from '../types'
+import { cleanupDetections } from '../utils/boxes'
 
 interface Props {
   onCapture: (file: File) => void // trả về ảnh vừa chụp để nhận diện + review
@@ -175,7 +176,8 @@ export default function CameraCaptureModal({ onCapture, onClose }: Props) {
           try {
             const res = await countBoxes([f])
             if (active) {
-              applyDetections(res.per_image?.[0]?.boxes ?? [])
+              // Cùng điều kiện với review: bỏ box quá nhỏ + khử chồng > 0.25.
+              applyDetections(cleanupDetections(res.per_image?.[0]?.boxes ?? []))
               if (sample) prevSampleRef.current = sample
             }
           } catch {

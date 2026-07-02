@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { DetBox } from '../types'
 import { countBoxes } from '../api/client'
+import { area, cleanupDetections, interArea, normalize, OVERLAP_RATIO } from '../utils/boxes'
 
 interface Props {
   src: string // URL ảnh để hiển thị (object URL của file mới hoặc URL ảnh server)
@@ -10,15 +11,6 @@ interface Props {
   onConfirm: (boxes: DetBox[], count: number) => void
   onCancel: () => void
 }
-
-// Chuẩn hoá box để x1<x2, y1<y2 (sau khi kéo có thể ngược chiều).
-const normalize = (b: DetBox): DetBox => ({
-  x1: Math.min(b.x1, b.x2),
-  y1: Math.min(b.y1, b.y2),
-  x2: Math.max(b.x1, b.x2),
-  y2: Math.max(b.y1, b.y2),
-  conf: b.conf,
-})
 
 // Box vẽ nhỏ hơn ngưỡng này (theo cạnh chuẩn hoá) bị bỏ qua — chống chạm nhầm.
 const MIN_SIDE = 0.01
@@ -31,23 +23,6 @@ const NEIGHBORS_K = 3
 // Khung crop = hệ số này × kích thước trung bình của box lân cận (đủ rộng để
 // bao khoảng trống + vài box xung quanh làm ngữ cảnh cho model).
 const CROP_MULTIPLIER = 3
-// Box mới trùng box cũ (IoU ≥ ngưỡng) thì bỏ — chỉ thêm box thật sự mới.
-const DEDUP_IOU = 0.25
-
-// IoU của 2 box (toạ độ chuẩn hoá 0..1).
-const iou = (a: DetBox, b: DetBox): number => {
-  const ix1 = Math.max(a.x1, b.x1)
-  const iy1 = Math.max(a.y1, b.y1)
-  const ix2 = Math.min(a.x2, b.x2)
-  const iy2 = Math.min(a.y2, b.y2)
-  const iw = Math.max(0, ix2 - ix1)
-  const ih = Math.max(0, iy2 - iy1)
-  const inter = iw * ih
-  const areaA = (a.x2 - a.x1) * (a.y2 - a.y1)
-  const areaB = (b.x2 - b.x1) * (b.y2 - b.y1)
-  const uni = areaA + areaB - inter
-  return uni > 0 ? inter / uni : 0
-}
 
 type Mode = 'draw' | 'move' | 'pan'
 type Corner = 'nw' | 'ne' | 'sw' | 'se'
@@ -61,7 +36,7 @@ const CORNER_CURSOR: Record<Corner, string> = {
 }
 
 export default function BoxReviewModal({ src, initialBoxes, index, total, onConfirm, onCancel }: Props) {
-  const [boxes, setBoxes] = useState<DetBox[]>(() => initialBoxes.map(normalize))
+  const [boxes, setBoxes] = useState<DetBox[]>(() => cleanupDetections(initialBoxes))
   const [selected, setSelected] = useState<number | null>(null)
   const [draft, setDraft] = useState<DetBox | null>(null)
   // Chế độ thao tác: 'draw' = vẽ box mới; 'move' = chọn/di chuyển/đổi kích thước
@@ -90,12 +65,16 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
   // Kéo di chuyển ảnh (pan): vị trí con trỏ + view lúc bấm.
   const panRef = useRef<{ startX: number; startY: number; vx: number; vy: number } | null>(null)
 
-  // Tính kích thước hiển thị: phóng ảnh vừa khít khung (92% rộng × 80% cao).
+  // Tính kích thước hiển thị sao cho cả modal vừa trong màn hình (modal bị chặn
+  // ở max-height 90vh). Chừa chỗ cho padding modal + header + thanh công cụ +
+  // phần đếm box + nút hành động (~330px) và bề rộng modal (~56px padding) để
+  // không bao giờ phải cuộn dọc/ngang.
   const computeSize = () => {
     const el = imgRef.current
     if (!el || !el.naturalWidth || !el.naturalHeight) return
-    const maxW = window.innerWidth * 0.92 - 64
-    const maxH = window.innerHeight * 0.8
+    const modalW = Math.min(1100, window.innerWidth * 0.95)
+    const maxW = modalW - 56
+    const maxH = window.innerHeight * 0.9 - 330
     const scale = Math.min(maxW / el.naturalWidth, maxH / el.naturalHeight)
     setSize({
       w: Math.max(1, Math.round(el.naturalWidth * scale)),
@@ -245,12 +224,21 @@ export default function BoxReviewModal({ src, initialBoxes, index, total, onConf
         y2: region.y1 + d.y2 * rh,
         conf: d.conf,
       }))
-      const fresh = mapped.filter(
+      // Ứng viên hợp lệ về kích thước, chưa chồng > 0.25 diện tích box đã có.
+      const candidates = mapped.filter(
         (m) =>
           m.x2 - m.x1 >= MIN_SIDE &&
           m.y2 - m.y1 >= MIN_SIDE &&
-          boxes.every((b) => iou(m, b) < DEDUP_IOU),
+          boxes.every((b) => interArea(m, b) < OVERLAP_RATIO * Math.min(area(m), area(b))),
       )
+      // Khử chồng lấn giữa chính các box mới (giữ box lớn hơn).
+      const fresh: DetBox[] = []
+      for (const m of [...candidates].sort((p, q) => area(q) - area(p))) {
+        const overlaps = fresh.some(
+          (k) => interArea(m, k) >= OVERLAP_RATIO * Math.min(area(m), area(k)),
+        )
+        if (!overlaps) fresh.push(m)
+      }
       if (fresh.length) {
         setBoxes((prev) => [...prev, ...fresh])
         flash(`Đã thêm ${fresh.length} box`)
